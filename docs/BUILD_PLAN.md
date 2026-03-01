@@ -43,7 +43,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 12 | Health Metric Logging | [x] Done |
 | 13 | Google Calendar Sync | [x] Done |
 | 14 | Customisable Views | [x] Done |
-| 15 | Polish & Deploy to Vercel | [ ] Pending |
+| 15 | Polish & Deploy to Vercel | [x] Done |
 
 ---
 
@@ -512,7 +512,7 @@ Ask Yosef to set up the Google Cloud project and provide the Client ID and Clien
 ## Phase 15 — Polish & Deploy to Vercel
 **What this does:** The final phase. Polishes the app visually, then deploys it to a live URL on Vercel so you can access it from any browser on your Mac.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. **Design polish — run through this checklist:**
