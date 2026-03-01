@@ -564,7 +564,7 @@ Ask Yosef to set up the Google Cloud project and provide the Client ID and Clien
 ## Phase 16 — UI Design Polish
 **What this does:** Transforms the app from functional-but-plain into something that looks and feels premium — clean, calm, and professional. The design reference is Todoist (warm neutrals, precise typography, refined sidebar), with influences from Things 3 (extreme minimalism, generous whitespace) and Linear (crisp layout, subtle depth). Every detail below is intentional. Do not skip any step.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ---
 
@@ -845,7 +845,7 @@ Before pushing to GitHub and deploying, go through every item below:
 ## Phase 17 — Bug Fixes & Full App Testing
 **What this does:** Systematically tests every feature in the app, documents what works and what doesn't, and fixes all known bugs. Do not skip any test. After fixing each bug, re-test that specific feature before moving on.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ---
 
