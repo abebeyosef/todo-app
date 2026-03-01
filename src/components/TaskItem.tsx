@@ -43,7 +43,9 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange 
 
   return (
     <div
-      className="group flex items-center gap-3 rounded-lg px-2 transition-colors duration-100 hover:bg-[var(--bg-hover)]"
+      className="group flex items-center gap-3 rounded-lg px-2 transition-colors duration-100"
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
       style={{
         minHeight: 44,
         borderBottom: '1px solid var(--divider)',

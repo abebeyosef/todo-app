@@ -461,7 +461,9 @@ export default function TasksPage() {
                   {scopedCompleted.map((task) => (
                     <div
                       key={task.id}
-                      className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-[var(--bg-hover)]"
+                      className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors"
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                       style={{ borderBottom: '1px solid var(--divider)' }}
                     >
                       <span

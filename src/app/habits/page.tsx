@@ -235,7 +235,9 @@ export default function HabitsPage() {
                       <button
                         key={habit.id}
                         onClick={() => toggleHabit(habit.id)}
-                        className="flex items-center gap-3 rounded-lg px-2 text-left transition-colors hover:bg-[var(--bg-hover)] focus:outline-none"
+                        className="flex items-center gap-3 rounded-lg px-2 text-left transition-colors focus:outline-none"
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                         style={{ minHeight: 44, borderBottom: '1px solid var(--divider)' }}
                       >
                         <span

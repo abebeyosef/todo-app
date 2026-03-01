@@ -107,12 +107,12 @@ export default function Sidebar() {
 
   const isTasksPage = pathname === '/';
 
-  const navLinkClass = (active: boolean) =>
-    `relative flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors duration-100 ${
-      active
-        ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
-        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-    }`;
+  const navLinkClass = 'relative flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors duration-100';
+
+  const navLinkStyle = (active: boolean) => ({
+    background: active ? 'var(--bg-hover)' : 'transparent',
+    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+  });
 
   return (
     <>
@@ -132,7 +132,14 @@ export default function Sidebar() {
           {[{ label: 'Tasks', href: '/' }, { label: 'Habits', href: '/habits' }].map(({ label, href }) => {
             const active = pathname === href && !selectedProject;
             return (
-              <Link key={href} href={href} className={navLinkClass(active)}>
+              <Link
+                key={href}
+                href={href}
+                className={navLinkClass}
+                style={navLinkStyle(active)}
+                onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+                onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
+              >
                 {active && (
                   <span
                     className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full"
@@ -163,7 +170,10 @@ export default function Sidebar() {
               {/* Inbox */}
               <button
                 onClick={() => router.push('/')}
-                className={navLinkClass(isTasksPage && !selectedProject)}
+                className={navLinkClass}
+                style={navLinkStyle(isTasksPage && !selectedProject)}
+                onMouseEnter={(e) => { if (!(isTasksPage && !selectedProject)) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+                onMouseLeave={(e) => { if (!(isTasksPage && !selectedProject)) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
               >
                 {isTasksPage && !selectedProject && (
                   <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
@@ -179,7 +189,10 @@ export default function Sidebar() {
                 <div key={p.id} className="group relative">
                   <button
                     onClick={() => router.push(`/?project=${p.id}`)}
-                    className={navLinkClass(selectedProject === p.id)}
+                    className={navLinkClass}
+                    style={navLinkStyle(selectedProject === p.id)}
+                    onMouseEnter={(e) => { if (selectedProject !== p.id) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+                    onMouseLeave={(e) => { if (selectedProject !== p.id) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
                   >
                     {selectedProject === p.id && (
                       <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
@@ -197,14 +210,18 @@ export default function Sidebar() {
                   <div className="absolute right-2 top-1.5 hidden gap-0.5 group-hover:flex">
                     <button
                       onClick={(e) => { e.stopPropagation(); setProjectError(null); setRenaming(p); }}
-                      className="rounded p-1 transition-colors hover:bg-[var(--bg-hover)]"
+                      className="rounded p-1 transition-colors"
                       style={{ fontSize: 12, color: 'var(--text-muted)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                       title="Rename"
                     >✎</button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteProject(p); }}
-                      className="rounded p-1 transition-colors hover:bg-[var(--bg-hover)]"
+                      className="rounded p-1 transition-colors"
                       style={{ fontSize: 14, color: 'var(--text-muted)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                       title="Delete"
                     >×</button>
                   </div>
@@ -214,8 +231,10 @@ export default function Sidebar() {
               {/* New project */}
               <button
                 onClick={() => { setProjectError(null); setShowModal(true); }}
-                className="mt-1 flex h-8 w-full items-center gap-1 rounded-lg px-3 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+                className="mt-1 flex h-8 w-full items-center gap-1 rounded-lg px-3 text-xs transition-colors"
                 style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 + New Project
               </button>
