@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Task } from '@/types/task';
 
 type Props = {
@@ -9,120 +10,348 @@ type Props = {
   onPriorityChange: (id: string, priority: 'p1' | 'p2' | 'p3') => void;
 };
 
+function formatDate(date: Date): { text: string; overdue: boolean } {
+  const now = new Date();
+  const isOverdue = date < now && !sameDay(date, now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+
+  let text: string;
+  if (sameDay(date, now)) {
+    text = `Today ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  } else if (sameDay(date, tomorrow)) {
+    text = `Tomorrow ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  } else {
+    text =
+      date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
+      ` ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  return { text, overdue: isOverdue };
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
 const PRIORITY_COLOUR: Record<string, string> = {
-  p1: 'var(--p1)',
-  p2: 'var(--p2)',
-  p3: 'var(--p3)',
+  p1: '#DB4035',
+  p2: '#D97706',
+  p3: '#4073FF',
 };
 
 const NEXT_PRIORITY: Record<string, 'p1' | 'p2' | 'p3'> = {
   p1: 'p2', p2: 'p3', p3: 'p1',
 };
 
-function formatDate(date: Date): string {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const sameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-  const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  if (sameDay(date, today)) return `Today ${timeStr}`;
-  if (sameDay(date, tomorrow)) return `Tomorrow ${timeStr}`;
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ` ${timeStr}`;
-}
+type ContextMenuProps = {
+  task: Task;
+  onDelete: () => void;
+  onPriorityChange: (p: 'p1' | 'p2' | 'p3') => void;
+  onClose: () => void;
+  style?: React.CSSProperties;
+};
 
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
+function ContextMenu({ task, onDelete, onPriorityChange, onClose, style }: ContextMenuProps) {
+  const priorities: Array<{ value: 'p1' | 'p2' | 'p3'; colour: string; label: string }> = [
+    { value: 'p1', colour: '#DB4035', label: 'Priority 1' },
+    { value: 'p2', colour: '#D97706', label: 'Priority 2' },
+    { value: 'p3', colour: '#4073FF', label: 'Priority 3' },
+  ];
 
-export default function TaskItem({ task, onComplete, onDelete, onPriorityChange }: Props) {
-  const isAlwaysVisible = task.priority === 'p1';
+  const menuItem = (label: string, onClick: () => void, danger = false) => (
+    <button
+      onClick={() => { onClick(); onClose(); }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        padding: '7px 12px',
+        fontSize: 14,
+        color: danger ? 'var(--text-overdue)' : 'var(--text-primary)',
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        textAlign: 'left',
+        borderRadius: 4,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover-row)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div
-      className="group flex items-center gap-3 rounded-lg px-2 transition-colors duration-100"
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
       style={{
-        minHeight: 44,
-        borderBottom: '1px solid var(--divider)',
-        opacity: task.completed ? 0.55 : 1,
-        transition: 'opacity 250ms ease, background-color 100ms ease',
+        position: 'absolute',
+        right: 0,
+        top: '100%',
+        zIndex: 100,
+        background: 'var(--bg-modal)',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        boxShadow: 'var(--shadow-dropdown)',
+        minWidth: 200,
+        padding: '4px',
+        ...style,
       }}
+      onClick={(e) => e.stopPropagation()}
     >
+      {/* Priority */}
+      <div style={{ padding: '6px 12px 4px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+        Priority
+      </div>
+      <div style={{ display: 'flex', gap: 6, padding: '4px 12px 8px' }}>
+        {priorities.map(({ value, colour, label }) => (
+          <button
+            key={value}
+            onClick={() => { onPriorityChange(value); onClose(); }}
+            title={label}
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              border: `2px solid ${task.priority === value ? colour : 'var(--border)'}`,
+              background: task.priority === value ? colour + '22' : 'transparent',
+              cursor: 'pointer',
+              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: colour,
+            }}
+          >
+            🚩
+          </button>
+        ))}
+        <button
+          onClick={() => { onPriorityChange('p3'); onClose(); }}
+          title="No priority"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 6,
+            border: '2px solid var(--border)',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontSize: 14,
+            color: 'var(--text-muted)',
+          }}
+        >
+          🏳
+        </button>
+      </div>
+      <div style={{ height: 1, background: 'var(--divider)', margin: '2px 0' }} />
+      {menuItem('🗑 Delete task', onDelete, true)}
+    </div>
+  );
+}
+
+export default function TaskItem({ task, onComplete, onDelete, onPriorityChange }: Props) {
+  const [hovered, setHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [completing, setCompleting] = useState(false);
+
+  const dateInfo = task.scheduledAt ? formatDate(task.scheduledAt) : null;
+
+  const handleComplete = () => {
+    setCompleting(true);
+    setTimeout(() => onComplete(task.id), 200);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 0,
+        minHeight: dateInfo ? 56 : 48,
+        padding: '8px 0',
+        borderBottom: '1px solid var(--divider)',
+        background: hovered ? 'var(--bg-hover-row)' : 'transparent',
+        borderRadius: hovered ? 6 : 0,
+        transition: 'background 80ms ease, opacity 200ms ease',
+        opacity: completing ? 0 : 1,
+        cursor: 'default',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
+    >
+      {/* Drag handle — visible on hover */}
+      <div
+        style={{
+          width: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingTop: 2,
+          opacity: hovered ? 1 : 0,
+          transition: 'opacity 80ms ease',
+          color: 'var(--text-muted)',
+          cursor: 'grab',
+          flexShrink: 0,
+          fontSize: 14,
+          userSelect: 'none',
+        }}
+        title="Drag to reorder"
+      >
+        ⠿
+      </div>
+
       {/* Checkbox */}
       <button
-        onClick={() => onComplete(task.id)}
-        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150 focus:outline-none"
+        onClick={handleComplete}
         style={{
-          borderColor: task.completed ? 'var(--text-muted)' : 'var(--border)',
-          background: task.completed ? 'var(--text-muted)' : 'transparent',
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          border: `1.5px solid ${hovered ? 'var(--accent)' : 'var(--checkbox-border)'}`,
+          background: 'transparent',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          marginTop: 2,
+          transition: 'border-color 80ms ease',
+          padding: 0,
         }}
-        aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
-      >
-        {task.completed && (
-          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </button>
+        aria-label="Mark complete"
+      />
 
       {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col py-2.5">
-        <div className="flex items-center gap-1.5">
+      <div style={{ flex: 1, minWidth: 0, paddingLeft: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {task.projectColour && (
             <span
-              className="inline-block flex-shrink-0 rounded-full"
-              style={{ width: 8, height: 8, backgroundColor: task.projectColour }}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: task.projectColour,
+                flexShrink: 0,
+              }}
             />
           )}
           <span
-            className="truncate text-sm font-medium"
             style={{
-              color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)',
-              textDecoration: task.completed ? 'line-through' : undefined,
+              fontSize: 15,
+              fontWeight: 400,
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
             {task.name}
           </span>
         </div>
-        {(task.project || task.scheduledAt || task.duration) && (
-          <div className="flex items-center gap-2 pt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {task.project && <span>#{task.project}</span>}
-            {task.scheduledAt && <span>{formatDate(task.scheduledAt)}</span>}
-            {task.duration && <span>· {formatDuration(task.duration)}</span>}
+        {dateInfo && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              marginTop: 3,
+              fontSize: 12,
+              color: dateInfo.overdue ? 'var(--text-overdue)' : 'var(--text-upcoming)',
+            }}
+          >
+            <span>📅</span>
+            <span>{dateInfo.text}</span>
           </div>
         )}
       </div>
 
-      {/* Priority dot */}
-      <button
-        onClick={() => onPriorityChange(task.id, NEXT_PRIORITY[task.priority])}
-        title={`Priority: ${task.priority.toUpperCase()} — click to change`}
-        className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full transition-opacity duration-100 focus:outline-none ${
-          isAlwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        }`}
+      {/* Right side: priority flag (p1 always, others on hover) + action icons */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          paddingRight: 8,
+          flexShrink: 0,
+          marginTop: 2,
+        }}
       >
-        <span
-          className="block rounded-full transition-transform duration-100 active:scale-150"
-          style={{ width: 8, height: 8, background: PRIORITY_COLOUR[task.priority] }}
-        />
-      </button>
+        {/* Priority flag */}
+        {(task.priority === 'p1' || hovered) && (
+          <button
+            onClick={() => onPriorityChange(task.id, NEXT_PRIORITY[task.priority])}
+            title={`Priority: ${task.priority.toUpperCase()} — click to change`}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              fontSize: 14,
+              color: PRIORITY_COLOUR[task.priority],
+              opacity: task.priority === 'p1' ? 1 : hovered ? 1 : 0,
+              transition: 'opacity 80ms ease',
+              lineHeight: 1,
+            }}
+          >
+            🚩
+          </button>
+        )}
 
-      {/* Delete */}
-      <button
-        onClick={() => onDelete(task.id)}
-        className="hidden h-5 w-5 flex-shrink-0 items-center justify-center rounded text-lg leading-none transition-colors group-hover:flex focus:outline-none"
-        style={{ color: 'var(--text-muted)' }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-        aria-label="Delete task"
-      >
-        ×
-      </button>
+        {/* Action icons — on hover only */}
+        {hovered && (
+          <>
+            {/* Edit (no-op visual) */}
+            <button
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 2,
+                color: 'var(--icon)',
+                fontSize: 14,
+                lineHeight: 1,
+                borderRadius: 4,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--icon)')}
+              title="Edit"
+            >
+              ✏
+            </button>
+
+            {/* Three-dot menu */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  color: 'var(--icon)',
+                  fontSize: 14,
+                  lineHeight: 1,
+                  borderRadius: 4,
+                  letterSpacing: 1,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--icon)')}
+                title="More options"
+              >
+                ···
+              </button>
+              {menuOpen && (
+                <ContextMenu
+                  task={task}
+                  onDelete={() => onDelete(task.id)}
+                  onPriorityChange={(p) => onPriorityChange(task.id, p)}
+                  onClose={() => setMenuOpen(false)}
+                />
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

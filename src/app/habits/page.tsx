@@ -179,7 +179,7 @@ export default function HabitsPage() {
             <div className="flex gap-2">
               <div
                 className="rounded-xl px-3 py-2 text-center"
-                style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', minWidth: 72 }}
+                style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-dropdown)', minWidth: 72 }}
               >
                 <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                   Streak
@@ -190,7 +190,7 @@ export default function HabitsPage() {
               </div>
               <div
                 className="rounded-xl px-3 py-2 text-center"
-                style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', minWidth: 72 }}
+                style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-dropdown)', minWidth: 72 }}
               >
                 <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                   Best
@@ -299,9 +299,9 @@ export default function HabitsPage() {
                   onKeyDown={(e) => e.key === 'Enter' && addHabit()}
                   placeholder="New habit name…"
                   className="flex-1 rounded-lg px-3 py-2 text-sm outline-none transition-all"
-                  style={{ border: `1.5px solid ${habitError ? 'var(--p1)' : 'var(--border)'}`, background: 'var(--bg-input)', color: 'var(--text-primary)' }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = habitError ? 'var(--p1)' : 'var(--accent)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = habitError ? 'var(--p1)' : 'var(--border)')}
+                  style={{ border: `1.5px solid ${habitError ? 'var(--text-overdue)' : 'var(--border)'}`, background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = habitError ? 'var(--text-overdue)' : 'var(--accent)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = habitError ? 'var(--text-overdue)' : 'var(--border)')}
                 />
                 <button
                   onClick={addHabit}
@@ -314,7 +314,7 @@ export default function HabitsPage() {
                 </button>
               </div>
               {habitError && (
-                <p className="mb-4 text-xs" style={{ color: 'var(--p1)' }}>{habitError}</p>
+                <p className="mb-4 text-xs" style={{ color: 'var(--text-overdue)' }}>{habitError}</p>
               )}
               {!habitError && <div className="mb-4" />}
 
@@ -362,7 +362,7 @@ export default function HabitsPage() {
                                   onClick={() => deleteHabit(habit.id)}
                                   className="transition-colors focus:outline-none"
                                   style={{ color: 'var(--text-muted)' }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--p1)')}
+                                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-overdue)')}
                                   onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
                                   aria-label="Delete habit"
                                 >

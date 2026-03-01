@@ -46,6 +46,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 15 | Polish & Deploy to Vercel | [x] Done |
 | 16 | UI Design Polish | [x] Done |
 | 17 | Bug Fixes & Full App Testing | [x] Done |
+| 18 | Todoist-Accurate Visual Redesign | [ ] Pending |
 
 ---
 
@@ -1126,4 +1127,416 @@ After fixing the known bugs, add proper error handling so future issues are visi
 
 ---
 
-*End of Build Plan — 17 Phases*
+## Phase 18 — Todoist-Accurate Visual Redesign
+**What this does:** Fully replaces the Phase 16 design with a pixel-accurate recreation of the Todoist interface observed in the reference screen recording. This is a comprehensive rework of every visual element. Phase 16 remains in this document for reference but Phase 18 takes priority in every area where they conflict.
+
+**Status:** [ ] Pending
+
+**Important note for Claude Code:** Read every section of this phase before writing a single line of code. The changes are interconnected — the sidebar, task input, and task rows all need to change together. Do not partially implement.
+
+---
+
+### 18.1 — Colour System (Replaces Phase 16.1 entirely)
+
+Remove all Phase 16 CSS variables and replace with this exact set in `src/app/globals.css`:
+
+```css
+:root {
+  /* Backgrounds */
+  --bg-sidebar:       #FAF8F5;   /* Warm cream — sidebar background */
+  --bg-main:          #FFFFFF;   /* Pure white — main content area */
+  --bg-active:        #FFEED9;   /* Light amber/peach — active sidebar item */
+  --bg-hover-sidebar: #F0EDE8;   /* Slightly darker cream — sidebar hover */
+  --bg-hover-row:     #F5F5F5;   /* Very light grey — task row hover */
+  --bg-modal:         #FFFFFF;   /* White — modal/dialog backgrounds */
+  --bg-toast:         #1F1F1F;   /* Near-black — toast notification */
+  --bg-input:         #FFFFFF;   /* White — task input form */
+  --bg-tag:           #FFEED9;   /* Light amber — NL input parsed tokens */
+
+  /* Text */
+  --text-primary:     #202020;   /* Near-black — task names, headings */
+  --text-secondary:   #666666;   /* Medium grey — metadata, descriptions */
+  --text-muted:       #999999;   /* Light grey — placeholders, counts */
+  --text-accent:      #B45309;   /* Dark amber — "Add task" label, links */
+  --text-toast:       #FFFFFF;   /* White — toast text */
+  --text-overdue:     #DB4035;   /* Red — overdue date text */
+  --text-upcoming:    #B45309;   /* Amber — upcoming date text */
+
+  /* Accent (primary action colour — amber/orange, as seen in recording) */
+  --accent:           #D97706;   /* Amber — buttons, active icons */
+  --accent-dark:      #B45309;   /* Darker amber — hover on accent */
+  --accent-bg:        #FFEED9;   /* Very light amber — active item fill */
+
+  /* Sidebar nav icon colour */
+  --icon:             #555555;   /* Dark grey — all sidebar icons */
+  --icon-active:      #D97706;   /* Amber — active sidebar item icon */
+
+  /* Task row */
+  --checkbox-border:  #CCCCCC;   /* Light grey — empty checkbox ring */
+  --divider:          #F0F0F0;   /* Very subtle — between task rows */
+
+  /* Date badge colours */
+  --date-overdue-bg:  #FDECEA;   /* Light red bg — overdue date pill */
+  --date-future-bg:   #FFF3E0;   /* Light amber bg — upcoming date pill */
+
+  /* Borders */
+  --border:           #E8E4DF;   /* Warm grey — input borders, modal edges */
+  --border-input:     #D1CBC3;   /* Slightly darker — input field border */
+
+  /* Shadows */
+  --shadow-dropdown:  0 4px 16px rgba(0,0,0,0.12);  /* Dropdown/modal shadow */
+  --shadow-toast:     0 4px 12px rgba(0,0,0,0.20);  /* Toast shadow */
+}
+```
+
+---
+
+### 18.2 — Typography (Replaces Phase 16.2)
+
+Keep the Inter font from Phase 16. Apply this updated type scale:
+
+| Element | Size | Weight | Colour | Notes |
+|---|---|---|---|---|
+| Page title (e.g. "Today", "PMG") | 24px | 700 | `--text-primary` | Letter-spacing: -0.02em |
+| Page subtitle (e.g. "1 task") | 13px | 400 | `--text-muted` | 4px below title |
+| Sidebar section label ("My Projects") | 12px | 600 | `--text-secondary` | Uppercase, letter-spacing 0.04em |
+| Sidebar nav item | 15px | 400 | `--text-primary` | |
+| Sidebar nav item — active | 15px | 600 | `--text-primary` | |
+| Task name | 15px | 400 | `--text-primary` | |
+| Task date/metadata | 12px | 400 | `--text-overdue` or `--text-upcoming` | Depends on date status |
+| Task placeholder | 15px | 400 | `--text-muted` | "Task name" |
+| Description placeholder | 13px | 400 | `--text-muted` | "Description" |
+| Section date header (e.g. "Mar 1 · Today · Sunday") | 14px | 600 | `--text-primary` | |
+| "Overdue" section header | 14px | 600 | `--text-secondary` | |
+| "Add task" button in sidebar | 15px | 600 | `--text-accent` | |
+| Toast text | 13px | 400 | `--text-toast` | |
+| Modal field label | 13px | 600 | `--text-primary` | |
+| Button text (primary) | 14px | 600 | `#FFFFFF` | |
+| Button text (secondary) | 14px | 400 | `--text-secondary` | |
+
+---
+
+### 18.3 — Overall Layout (Replaces Phase 16.10)
+
+```
+┌─────────────────────┬──────────────────────────────────────────┐
+│   SIDEBAR  280px    │           MAIN CONTENT                   │
+│   bg: --bg-sidebar  │           bg: --bg-main                  │
+│                     │                                          │
+│   [traffic lights   │   [page title]                           │
+│    at very top]     │                                          │
+│                     │   [task list]                            │
+│   [user avatar]     │                                          │
+│   [Add task btn]    │                                          │
+│   [nav items]       │                                          │
+│   [My Projects]     │                                          │
+│   [project list]    │                                          │
+│                     │                                          │
+│   [Help & resources]│                                          │
+└─────────────────────┴──────────────────────────────────────────┘
+```
+
+- Sidebar width: **280px** (wider than Phase 16's 240px — matches Todoist exactly)
+- No visible border between sidebar and main — colour difference creates separation
+- Main content: **no max-width** — content uses the full remaining width with `48px` padding each side
+- App window: full Mac window with standard traffic light buttons (these come from the OS — no styling needed)
+
+---
+
+### 18.4 — Sidebar (Replaces Phase 16.3 entirely)
+
+**Structure top to bottom:**
+
+**1. User row** (top of sidebar, 16px padding)
+- Circle avatar with initials ("YA"), teal/blue-green background, white initials, 32px diameter
+- Username "Yosef" in 14px, 500 weight, `--text-primary`
+- Small dropdown chevron after name
+
+**2. Primary action row** (12px below user row)
+- Large circular `+` button: 28px diameter, `--accent` background, white `+` icon, 20px
+- Text: "Add task" in 15px, 600 weight, `--text-accent`
+- Right side: waveform/voice icon in `--icon`, 18px
+- This row has 12px left padding, 8px top/bottom padding
+- On hover: text and icon darken slightly
+
+**3. Navigation items** (16px top margin)
+Each item: 36px height, 12px left padding, 8px border-radius, full sidebar width minus 8px on each side
+
+Icons (16px, `--icon`): use these Lucide icons:
+- Search → `Search`
+- Inbox → `Inbox`
+- Today → `CalendarCheck`
+- Upcoming → `CalendarRange`
+- Filters & Labels → `Tag`
+- More → `MoreHorizontal`
+
+Layout: `[icon 16px] [8px gap] [label]` — right side shows count badge if > 0
+
+**Active state:** `--bg-active` background fill, icon colour → `--icon-active`, text weight → 600. NO left border. Just background fill.
+
+**Hover state:** `--bg-hover-sidebar` background, transition 80ms ease.
+
+**Count badge** (right side of nav items):
+- Red text, 13px, 400 weight: `--text-overdue`
+- No background — just the number in red
+
+**4. "My Projects" section** (24px below nav items)
+- Header: "My Projects" label left-aligned + collapse chevron right-aligned
+- Label: 12px, 600, `--text-secondary`, NOT uppercase (matches Todoist)
+- Chevron rotates on collapse
+
+**Project items** (same height/padding as nav items):
+- Left: `#` symbol in the project's assigned colour (16px, bold) — NOT a dot
+- Middle: project name, 15px, `--text-primary`
+- Right: task count in `--text-muted`, 13px — only shown if > 0
+- On hover: shows `···` (three dots) button on far right for project actions (rename, delete)
+- Active: `--bg-active` background, name weight → 600
+
+**5. Bottom of sidebar**
+- "Help & resources" link in `--text-muted`, 13px, with a `?` circle icon, pinned to bottom with 16px padding
+
+---
+
+### 18.5 — Task Input (Replaces Phase 16.4 entirely)
+
+**CRITICAL CHANGE:** Remove the fixed input bar at the top of the content area. Todoist does NOT have a persistent input bar in the content area. Instead, task input works in two ways:
+
+**Way 1: "Add task" button in sidebar** (always visible)
+- Clicking opens the inline task form at the TOP of the current view's task list
+
+**Way 2: "+ Add task" row at the bottom of each task list**
+- A subtle `+` icon followed by "Add task" text in `--text-muted`, 15px
+- On hover: text and icon become `--text-accent` (amber)
+- Clicking expands the inline task form directly below the last task
+
+**The inline task form** (expands in place, replacing the "+ Add task" row):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Task name                                          [🎤]    │
+│  Description                                                │
+├─────────────────────────────────────────────────────────────┤
+│  [📅 Date] [⏰ Deadline] [🚩 Priority] [🔔 Reminders] [···]│
+├─────────────────────────────────────────────────────────────┤
+│  [# ProjectName ▾]               [Cancel] [Add task]       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Styling:
+- White background, 1px `--border` border, border-radius 8px, `--shadow-dropdown`
+- Task name input: 15px, `--text-primary`, placeholder "Task name" in `--text-muted`
+- Description input: 13px, placeholder "Description" in `--text-muted`
+- Toolbar row: small pill buttons — `[icon] [label]` format, 12px text, `--text-secondary`, border: 1px `--border`, border-radius 4px, 6px horizontal padding
+- When date is parsed/set: pill shows the date value in `--text-accent` with amber background `--accent-bg`, and an `×` to clear it
+- Project selector: `#` in project colour + project name + dropdown arrow
+- Cancel button: no border, `--text-secondary`, 14px
+- "Add task" button: `--accent` background, white text, 14px, 600 weight, border-radius 6px, 10px horizontal padding
+
+**Natural language parsing behaviour (visual):**
+When the user types `#PMG make app tomorrow`:
+- `#PMG` gets highlighted as an amber tag pill inline within the text
+- `tomorrow` gets highlighted as an amber tag pill inline within the text
+- The project selector at the bottom automatically switches to `# PMG`
+- The Date pill in the toolbar automatically populates with "Tomorrow" in amber
+
+---
+
+### 18.6 — Task Rows (Replaces Phase 16.5)
+
+**Row structure (left to right):**
+```
+[⠿] [○] Task name                      [✏] [💬] [···]
+         📅 Feb 26 5 PM
+```
+
+Elements:
+1. **Drag handle** `⠿` (6 dots): 16px, `--text-muted`, only appears on ROW HOVER, 8px to the left of checkbox
+2. **Checkbox** `○`: 20px diameter circle, border 1.5px `--checkbox-border`. On hover: border colour → `--accent`. On click: fills with `--accent`, white checkmark appears, then row fades out over 200ms
+3. **12px gap**
+4. **Task name**: 15px, 400, `--text-primary`
+5. **Date line** (second line, only if date exists): calendar icon (12px) + date text (12px). Colour: `--text-overdue` (red) if past, `--text-upcoming` (amber) if future. No date = no second line.
+6. **Action icons** (right side, only on ROW HOVER): pencil (edit), comment bubble, three dots (`···`). All 16px, `--icon`. Gap between icons: 12px. Fade in on hover over 80ms.
+
+**Row metrics:**
+- Min height: 48px (56px if two lines)
+- Padding: 8px top and bottom, 0px left (drag handle sits outside)
+- Bottom border: 1px `--divider` (only between rows — not after the last one)
+- Background on hover: `--bg-hover-row`, border-radius 6px, transition 80ms
+
+**Section grouping headers** (within task lists):
+- "Overdue" header: 13px, 600, `--text-secondary` on left + "Reschedule" in `--text-accent` on right
+- Date headers (e.g. "Mar 1 · Today · Sunday"): 14px, 600, `--text-primary`, 20px top margin, 8px bottom margin
+- A thin `--divider` line above each date header
+
+---
+
+### 18.7 — Priority System (Replaces Phase 16.6)
+
+Todoist uses **flag icons** for priority, not dots. Update accordingly:
+
+- **p1**: red flag icon 🚩 (filled red `#DB4035`) — shown always on the task row, right-aligned before the action icons
+- **p2**: orange flag icon (filled amber `#D97706`) — shown on hover only
+- **p3**: blue flag icon (filled `#4073FF`) — shown on hover only
+- **No priority**: outline/empty flag icon — shown on hover only
+
+In the task context menu (`···`), show the Priority section as 4 clickable flag icons in a row (red, orange, blue, outline) — clicking sets that priority.
+
+Remove the small dot system from Phase 16 entirely.
+
+---
+
+### 18.8 — Context Menu (`···` on task rows)
+
+When clicking the `···` button on a task row, show a dropdown menu:
+
+```
+┌─────────────────────────────┐
+│ ↑  Add task above           │
+│ ↓  Add task below           │
+│ ✏  Edit              ⌘E    │
+├─────────────────────────────┤
+│ Date                     T  │
+│ [📅] [📆] [⊘] [···]        │
+├─────────────────────────────┤
+│ Priority                 Y  │
+│ [🚩] [🚩] [🚩] [🏳]        │
+├─────────────────────────────┤
+│ ⏰  Deadline                │
+│ 🔔  Reminders               │
+├─────────────────────────────┤
+│ ↕  Move to...            V  │
+│ ⧉  Duplicate                │
+│ 🔗  Copy link to task       │
+├─────────────────────────────┤
+│ 🗑  Delete          (red)   │
+└─────────────────────────────┘
+```
+
+Styling: white background, 1px `--border`, border-radius 8px, `--shadow-dropdown`, min-width 220px. Items: 34px height, 12px padding, 14px text. Keyboard shortcut shown in `--text-muted` right-aligned. Delete item: `--text-overdue` (red). Hover state: `--bg-hover-row`.
+
+---
+
+### 18.9 — "Add Project" Modal (Replaces current ProjectModal.tsx)
+
+The modal observed in the recording:
+
+```
+┌──────────────────────────────────────┐
+│ Add project  ?                    ×  │
+├──────────────────────────────────────┤
+│ Name                                 │
+│ [________________________] 0/120     │
+│                                      │
+│ Color                                │
+│ [● Charcoal                      ▾]  │
+│                                      │
+│                        [Cancel][Add] │
+└──────────────────────────────────────┘
+```
+
+Keep it simple — just Name and Color (remove Workspace, Parent project, Access, Layout). These are Todoist Pro features we don't need.
+
+Styling:
+- White card, border-radius 12px, `--shadow-dropdown`, width 440px, centered in screen with dark overlay behind
+- Header: "Add project" 16px, 600, `--text-primary` + `×` button top-right (20px, `--text-muted`)
+- Field labels: 13px, 600, `--text-primary`, 8px below
+- Text input: full-width, 1px `--border-input`, border-radius 6px, 10px padding, 15px text. Character count "0/120" right-aligned inside the input in `--text-muted`
+- Color dropdown: shows color dot + color name, same border/radius as text input
+- Color options: Charcoal, Berry Red, Forest Green, Sky Blue, Grape Purple, Tangerine Orange, Salmon Pink (each with a filled dot in that colour)
+- Cancel button: 14px, `--text-secondary`, no border, no background
+- Add button: `--accent` background, white text, 14px, 600, border-radius 6px, 12px horizontal padding
+
+---
+
+### 18.10 — Toast Notifications
+
+Every action (task complete, task added, order changed) shows a toast in the **bottom-left corner**:
+
+```
+┌────────────────────────────────────┐
+│  1 task completed  [Undo]  [×]     │
+│  Task added to PMG  [Open]  [×]    │
+│  Order changed  [Undo]  [×]        │
+└────────────────────────────────────┘
+```
+
+Styling:
+- Background: `--bg-toast` (#1F1F1F)
+- Text: 13px, 400, white
+- "Undo" / "Open": 13px, 600, white, underlined
+- `×`: 14px white, `--text-muted` on hover
+- Border-radius: 8px
+- Padding: 12px 16px
+- `--shadow-toast`
+- Position: fixed, bottom: 24px, left: 24px
+- Auto-dismisses after 5 seconds
+- Multiple toasts stack vertically with 8px gap
+
+Implement using a toast context in `src/lib/toast.tsx` — any component can trigger a toast by calling `showToast('message', 'undo' | 'open' | null)`.
+
+---
+
+### 18.11 — Today View Layout
+
+The Today view has a specific layout that differs from other views:
+
+- Page title: "Today" (large, bold)
+- Subtitle: "✓ X tasks" below the title in `--text-muted`
+- **"Overdue" section** at the top (if any overdue tasks):
+  - Grey section header "Overdue" on left + "Reschedule" link in `--text-accent` on right
+  - Lists overdue tasks with red dates
+- **Date section** for today:
+  - Header: "Mar 1 · Today · Sunday" in 14px, 600
+  - Today's tasks below
+- **"+ Add task"** row at the bottom of today's section
+
+---
+
+### 18.12 — Completed Tasks Behaviour
+
+When a task is checked:
+1. Checkbox fills with `--accent` (amber), white tick appears
+2. Task row fades out over 200ms
+3. Toast appears bottom-left: "1 task completed  Undo  ×"
+4. Task moves to a hidden "Completed" view (not shown in main task list)
+5. Pressing "Undo" in the toast un-completes it and brings it back
+
+Do NOT show completed tasks in the same list with a strikethrough — they disappear from view immediately (this is different from Phase 16's behaviour).
+
+---
+
+### 18.13 — Implementation Order
+
+Implement in this exact order to avoid breaking changes mid-way:
+
+1. Update `globals.css` with Phase 18.1 colour tokens
+2. Update `Sidebar.tsx` — new layout (18.4), wider at 280px, `#` project items, amber active state
+3. Remove the fixed top input bar from `page.tsx` and `TaskInput.tsx`
+4. Add `+ Add task` row to the bottom of each task section in `page.tsx`
+5. Build the inline task form that expands from the `+ Add task` row
+6. Update `TaskItem.tsx` — new row layout (18.6), drag handle, action icons on hover, flag priority
+7. Update `ProjectModal.tsx` — simplified modal (18.9)
+8. Build the toast system `src/lib/toast.tsx` and `src/components/Toast.tsx` (18.10)
+9. Update context menu on task rows (18.8)
+10. Update Today view layout (18.11)
+11. `npm run build` — fix any TypeScript errors
+12. Commit: `"Phase 18 — Todoist-accurate visual redesign"`
+13. Push to GitHub — confirm Vercel deploys successfully
+14. Test on live URL: add a task, complete it, check toast, add a project, switch views
+
+---
+
+### Success Criteria
+- Sidebar is 280px wide, warm cream background, amber active states with NO left border indicator
+- Project items show `#` in their colour — not dots
+- No fixed input bar in the content area — task input is inline via `+ Add task`
+- Task rows show drag handle + action icons on hover
+- Priority uses flag icons, not dots
+- Completing a task triggers a toast and removes the row immediately (no strikethrough in list)
+- Toast notifications appear bottom-left, dark background, with Undo option
+- "Add project" modal is clean and simple with just Name and Color fields
+- Live Vercel deployment matches localhost exactly
+
+---
+
+*End of Build Plan — 18 Phases*

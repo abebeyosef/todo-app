@@ -11,7 +11,7 @@ export default function CalendarButton() {
         onClick={() => signOut({ redirect: false })}
         className="w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors focus:outline-none"
         style={{ color: '#16a34a' }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover-sidebar)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         title="Click to disconnect Google Calendar"
       >
@@ -26,7 +26,7 @@ export default function CalendarButton() {
       className="w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors focus:outline-none"
       style={{ color: 'var(--text-muted)' }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-hover)';
+        e.currentTarget.style.background = 'var(--bg-hover-sidebar)';
         e.currentTarget.style.color = 'var(--text-secondary)';
       }}
       onMouseLeave={(e) => {

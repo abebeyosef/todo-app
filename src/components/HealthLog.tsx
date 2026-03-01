@@ -61,7 +61,7 @@ export default function HealthLog() {
               onChange={(e) => save({ sleep_hours: e.target.value ? parseFloat(e.target.value) : null })}
               placeholder="0"
               className="w-20 rounded-lg px-3 py-1.5 text-right text-sm outline-none transition-all"
-              style={{ border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+              style={{ border: '1.5px solid var(--border)', background: 'var(--bg-modal)', color: 'var(--text-primary)' }}
               onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
@@ -80,8 +80,8 @@ export default function HealthLog() {
                 className="rounded-lg px-2 py-1 text-lg transition-all focus:outline-none"
                 style={{
                   transform: data.mood_score === value ? 'scale(1.1)' : undefined,
-                  background: data.mood_score === value ? 'var(--bg-card)' : 'transparent',
-                  boxShadow: data.mood_score === value ? 'var(--shadow-sm)' : undefined,
+                  background: data.mood_score === value ? 'var(--bg-modal)' : 'transparent',
+                  boxShadow: data.mood_score === value ? 'var(--shadow-dropdown)' : undefined,
                   opacity: data.mood_score === value ? 1 : 0.4,
                 }}
                 title={`Mood ${value}/5`}
@@ -103,7 +103,7 @@ export default function HealthLog() {
               onChange={(e) => save({ water_litres: e.target.value ? parseFloat(e.target.value) : null })}
               placeholder="0"
               className="w-20 rounded-lg px-3 py-1.5 text-right text-sm outline-none transition-all"
-              style={{ border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+              style={{ border: '1.5px solid var(--border)', background: 'var(--bg-modal)', color: 'var(--text-primary)' }}
               onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
               onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />

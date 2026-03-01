@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Task } from '@/types/task';
 import { Project } from '@/types/project';
-import TaskInput from '@/components/TaskInput';
 import TaskItem from '@/components/TaskItem';
+import InlineTaskForm from '@/components/InlineTaskForm';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/lib/toast';
 
-// ── Calendar API helpers (server-side route) ───────────────────────────────
+// ── Calendar API helpers ────────────────────────────────────────────────────
 async function calendarCreate(task: Task, accessToken: string): Promise<string | null> {
   try {
     const res = await fetch('/api/calendar', {
@@ -46,7 +47,7 @@ async function calendarDelete(googleEventId: string, accessToken: string) {
   }
 }
 
-// ── DB → app type ──────────────────────────────────────────────────────────
+// ── DB → app type ───────────────────────────────────────────────────────────
 type DbTask = {
   id: string;
   name: string;
@@ -81,62 +82,52 @@ function dbToTask(row: DbTask): Task {
   };
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 const PRIORITY_ORDER = { p1: 0, p2: 1, p3: 2 };
 const byPriority = (a: Task, b: Task) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
 
 function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
 
 function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 function formatDayHeader(date: Date): string {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-  if (sameDay(date, today)) return 'Today';
-  if (sameDay(date, tomorrow)) return 'Tomorrow';
-  return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+  const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
+  if (sameDay(date, today)) return `${dateStr} · Today · ${weekday}`;
+  if (sameDay(date, tomorrow)) return `${dateStr} · Tomorrow · ${weekday}`;
+  return `${dateStr} · ${weekday}`;
 }
 
-// ── View type ──────────────────────────────────────────────────────────────
-type View = 'today' | 'upcoming' | 'by-project' | 'backlog';
-const VIEWS: { id: View; label: string }[] = [
-  { id: 'today', label: 'Today' },
-  { id: 'upcoming', label: 'Upcoming' },
-  { id: 'by-project', label: 'By Project' },
-  { id: 'backlog', label: 'Backlog' },
-];
+type View = 'today' | 'upcoming' | 'by-project' | 'backlog' | 'inbox';
 
-// ── Page ───────────────────────────────────────────────────────────────────
+// ── Page ────────────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const { data: session } = useSession();
   const accessToken = session?.accessToken;
+  const { showToast } = useToast();
 
   const searchParams = useSearchParams();
+  const router = useRouter();
   const selectedProjectId = searchParams.get('project');
+  const viewParam = (searchParams.get('view') as View | null) ?? 'today';
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showP3, setShowP3] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [view, setView] = useState<View>('today');
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
-  // Load persisted view from localStorage
+  // Listen for sidebar "Add task" button
   useEffect(() => {
-    const saved = localStorage.getItem('lastView') as View | null;
-    if (saved && VIEWS.find((v) => v.id === saved)) setView(saved);
+    const handler = () => setFormOpen(true);
+    window.addEventListener('open-task-form', handler);
+    return () => window.removeEventListener('open-task-form', handler);
   }, []);
-
-  const changeView = (v: View) => {
-    setView(v);
-    localStorage.setItem('lastView', v);
-  };
 
   const loadData = useCallback(async () => {
     try {
@@ -161,25 +152,23 @@ export default function TasksPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Mutations ────────────────────────────────────────────────────────────
+  // ── Mutations ──────────────────────────────────────────────────────────────
   const addTask = async (task: Task) => {
     setTaskError(null);
     try {
       const matchedProject = task.project
         ? projects.find((p) => p.name.toLowerCase() === task.project!.toLowerCase())
         : null;
-
       let googleEventId: string | null = null;
       if (accessToken && task.scheduledAt) {
         googleEventId = await calendarCreate(task, accessToken);
       }
-
       const { data, error } = await supabase
         .from('tasks')
         .insert([{
           name: task.name,
           project: task.project ?? null,
-          project_id: matchedProject?.id ?? null,
+          project_id: task.projectId ?? matchedProject?.id ?? null,
           scheduled_at: task.scheduledAt?.toISOString() ?? null,
           duration: task.duration ?? null,
           priority: task.priority,
@@ -189,15 +178,18 @@ export default function TasksPage() {
         }])
         .select('*, projects(name, colour)')
         .single();
-
       if (error) {
         console.error('Failed to insert task:', error);
         setTaskError("Couldn't save task — please try again.");
         return;
       }
       if (data) {
-        setTasks((prev) => [dbToTask(data as DbTask), ...prev]);
+        const newTask = dbToTask(data as DbTask);
+        setTasks((prev) => [newTask, ...prev]);
         window.dispatchEvent(new Event('tasks-changed'));
+        const projectName = newTask.project ? ` to ${newTask.project}` : '';
+        showToast(`Task added${projectName}`);
+        setFormOpen(false);
       }
     } catch (err) {
       console.error('Unexpected error adding task:', err);
@@ -216,7 +208,16 @@ export default function TasksPage() {
         .eq('id', id);
       if (error) { console.error('Failed to complete task:', error); return; }
       const updated = { ...task, completed: nowCompleted, completedAt: nowCompleted ? new Date() : undefined };
-      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      if (nowCompleted) {
+        // Remove from active list immediately, show undo toast
+        setTasks((prev) => prev.filter((t) => t.id !== id).concat(updated));
+        showToast('1 task completed', 'undo', () => {
+          // Undo: mark incomplete
+          completeTask(id);
+        });
+      } else {
+        setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      }
       window.dispatchEvent(new Event('tasks-changed'));
       if (accessToken && task.googleEventId && task.scheduledAt) {
         await calendarUpdate(updated, task.googleEventId, accessToken);
@@ -251,13 +252,12 @@ export default function TasksPage() {
     }
   };
 
-  // ── Derived data ──────────────────────────────────────────────────────────
-  const allActive = tasks.filter((t) => !t.completed);
-  const completedTasks = tasks.filter((t) => t.completed);
+  // ── Derived data ────────────────────────────────────────────────────────────
+  const activeTasks = tasks.filter((t) => !t.completed);
 
   const viewTasks = selectedProjectId
-    ? allActive.filter((t) => t.projectId === selectedProjectId)
-    : allActive;
+    ? activeTasks.filter((t) => t.projectId === selectedProjectId)
+    : activeTasks;
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -266,242 +266,327 @@ export default function TasksPage() {
   in7Days.setDate(today.getDate() + 7);
 
   const renderTask = (task: Task) => (
-    <TaskItem key={task.id} task={task} onComplete={completeTask} onDelete={deleteTask} onPriorityChange={updatePriority} />
+    <TaskItem
+      key={task.id}
+      task={task}
+      onComplete={completeTask}
+      onDelete={deleteTask}
+      onPriorityChange={updatePriority}
+    />
   );
 
-  const high = (list: Task[]) => [...list.filter((t) => t.priority !== 'p3')].sort(byPriority);
-  const low  = (list: Task[]) => [...list.filter((t) => t.priority === 'p3')];
+  const AddTaskRow = ({ projectId }: { projectId?: string }) => {
+    const [open, setOpen] = useState(false);
+    if (open) {
+      return (
+        <InlineTaskForm
+          projects={projects}
+          onAdd={addTask}
+          onCancel={() => setOpen(false)}
+          defaultProjectId={projectId}
+          error={taskError}
+        />
+      );
+    }
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 4px',
+          fontSize: 15,
+          color: 'var(--text-muted)',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          width: '100%',
+          textAlign: 'left',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-accent)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+        }}
+      >
+        <span style={{ fontSize: 18, lineHeight: 1, marginTop: -1 }}>+</span>
+        Add task
+      </button>
+    );
+  };
 
-  // ── View renderers ────────────────────────────────────────────────────────
+  // ── Today view ─────────────────────────────────────────────────────────────
   function renderToday() {
-    const todayTasks = viewTasks.filter((t) => t.scheduledAt && sameDay(t.scheduledAt, today));
-    const hi = high(todayTasks);
-    const lo = low(todayTasks);
-    return renderPriorityGroups(hi, lo, 'Nothing scheduled for today. Add one above ↑');
-  }
+    const now = new Date();
+    const overdue = viewTasks.filter((t) => t.scheduledAt && t.scheduledAt < now && !sameDay(t.scheduledAt, now));
+    const todayTasks = viewTasks.filter((t) => t.scheduledAt && sameDay(t.scheduledAt, now));
+    const sorted = (list: Task[]) => [...list].sort(byPriority);
+    const todayCount = activeTasks.filter((t) => t.scheduledAt && sameDay(t.scheduledAt, now)).length;
 
-  function renderUpcoming() {
-    const upcoming = viewTasks
-      .filter((t) => t.scheduledAt && t.scheduledAt >= today && t.scheduledAt <= in7Days)
-      .sort((a, b) => (a.scheduledAt!.getTime() - b.scheduledAt!.getTime()) || byPriority(a, b));
-
-    if (upcoming.length === 0) {
-      return <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>Your next 7 days are clear.</p>;
-    }
-
-    const groups = new Map<string, Task[]>();
-    for (const t of upcoming) {
-      const key = isoDate(t.scheduledAt!);
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(t);
-    }
-
-    return (
-      <div>
-        {Array.from(groups.entries()).map(([dateStr, group]) => (
-          <div key={dateStr} className="mb-6">
-            <h2
-              className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {formatDayHeader(new Date(dateStr + 'T12:00:00'))}
-            </h2>
-            {group.map(renderTask)}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  function renderByProject() {
-    if (projects.length === 0) {
-      return <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>No projects yet.</p>;
-    }
-
-    const inboxTasks = viewTasks.filter((t) => !t.projectId);
-    const hasContent = projects.some((p) => viewTasks.some((t) => t.projectId === p.id)) || inboxTasks.length > 0;
-    if (!hasContent) {
-      const msg = selectedProject ? `No tasks in ${selectedProject.name} yet.` : 'No tasks in this project.';
-      return <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>{msg}</p>;
-    }
-
-    return (
-      <div>
-        {projects.map((p) => {
-          const pts = viewTasks.filter((t) => t.projectId === p.id);
-          if (pts.length === 0) return null;
-          return (
-            <div key={p.id} className="mb-8">
-              <div className="mb-2 flex items-center gap-2 px-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.colour }} />
-                <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-                  {p.name}
-                </h2>
-              </div>
-              {[...pts].sort(byPriority).map(renderTask)}
-            </div>
-          );
-        })}
-        {inboxTasks.length > 0 && (
-          <div className="mb-8">
-            <h2 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-              Inbox
-            </h2>
-            {[...inboxTasks].sort(byPriority).map(renderTask)}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function renderBacklog() {
-    const backlog = viewTasks.filter((t) => t.isBacklog);
-    const hi = high(backlog);
-    const lo = low(backlog);
-    return renderPriorityGroups(hi, lo, 'No tasks in your backlog.');
-  }
-
-  function renderPriorityGroups(hi: Task[], lo: Task[], emptyMsg: string) {
-    const p3Count = lo.length;
     return (
       <>
-        {hi.length > 0 && <div className="mb-6">{hi.map(renderTask)}</div>}
-        {p3Count > 0 && (
-          <div className="mb-6">
-            <button
-              onClick={() => setShowP3((v) => !v)}
-              className="mb-2 flex items-center gap-1 px-2 text-xs font-semibold uppercase tracking-wider transition-colors focus:outline-none"
-              style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-            >
-              <span className={`transition-transform ${showP3 ? 'rotate-90' : ''}`}>▶</span>
-              Low priority ({p3Count})
-            </button>
-            {showP3 && lo.map(renderTask)}
-          </div>
+        {/* Page header */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Today
+          </h1>
+          {!loading && (
+            <p style={{ marginTop: 4, fontSize: 13, color: 'var(--text-muted)' }}>
+              ✓ {todayCount} task{todayCount !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+
+        {/* Global inline form (from sidebar Add task button) */}
+        {formOpen && (
+          <InlineTaskForm
+            projects={projects}
+            onAdd={addTask}
+            onCancel={() => setFormOpen(false)}
+            error={taskError}
+          />
         )}
-        {hi.length === 0 && p3Count === 0 && (
-          <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>{emptyMsg}</p>
+
+        {loading ? (
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading…</p>
+        ) : (
+          <>
+            {/* Overdue section */}
+            {overdue.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>Overdue</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-accent)', cursor: 'pointer' }}>Reschedule</span>
+                </div>
+                {sorted(overdue).map(renderTask)}
+              </div>
+            )}
+
+            {/* Today section */}
+            <div>
+              <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+                {formatDayHeader(now)}
+              </h2>
+              {sorted(todayTasks).map(renderTask)}
+              {todayTasks.length === 0 && overdue.length === 0 && (
+                <p style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>
+                  Nothing scheduled for today.
+                </p>
+              )}
+              <AddTaskRow />
+            </div>
+          </>
         )}
       </>
     );
   }
 
-  // ── Completed section ──────────────────────────────────────────────────────
-  const scopedCompleted = selectedProjectId
-    ? completedTasks.filter((t) => t.projectId === selectedProjectId)
-    : completedTasks;
+  // ── Upcoming view ──────────────────────────────────────────────────────────
+  function renderUpcoming() {
+    const upcoming = viewTasks
+      .filter((t) => t.scheduledAt && t.scheduledAt >= today && t.scheduledAt <= in7Days)
+      .sort((a, b) => (a.scheduledAt!.getTime() - b.scheduledAt!.getTime()) || byPriority(a, b));
 
-  function formatCompletedDate(date: Date): string {
-    return date.toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short',
-      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined,
-    });
+    const pageTitle = 'Upcoming';
+    return (
+      <>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            {pageTitle}
+          </h1>
+        </div>
+
+        {formOpen && (
+          <InlineTaskForm projects={projects} onAdd={addTask} onCancel={() => setFormOpen(false)} error={taskError} />
+        )}
+
+        {loading ? (
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading…</p>
+        ) : upcoming.length === 0 ? (
+          <>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Your next 7 days are clear.</p>
+            <AddTaskRow />
+          </>
+        ) : (
+          (() => {
+            const groups = new Map<string, Task[]>();
+            for (const t of upcoming) {
+              const key = isoDate(t.scheduledAt!);
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(t);
+            }
+            return (
+              <div>
+                {Array.from(groups.entries()).map(([dateStr, group]) => (
+                  <div key={dateStr} style={{ marginBottom: 24 }}>
+                    <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
+                    <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+                      {formatDayHeader(new Date(dateStr + 'T12:00:00'))}
+                    </h2>
+                    {group.map(renderTask)}
+                  </div>
+                ))}
+                <AddTaskRow />
+              </div>
+            );
+          })()
+        )}
+      </>
+    );
   }
 
-  const pageTitle = selectedProject ? selectedProject.name : 'Tasks';
+  // ── By-project view ────────────────────────────────────────────────────────
+  function renderByProject() {
+    const pageTitle = selectedProject ? selectedProject.name : 'By Project';
+    return (
+      <>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            {pageTitle}
+          </h1>
+        </div>
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    <div style={{ maxWidth: 680 }}>
-      {/* Header: title left, view pills right */}
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{pageTitle}</h1>
-
-        {!selectedProjectId && (
-          <div className="flex gap-0.5 rounded-xl p-1" style={{ background: 'var(--bg-hover)' }}>
-            {VIEWS.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => changeView(id)}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-100 focus:outline-none"
-                style={{
-                  background: view === id ? 'var(--bg-card)' : 'transparent',
-                  color: view === id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  boxShadow: view === id ? 'var(--shadow-sm)' : undefined,
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        {formOpen && (
+          <InlineTaskForm
+            projects={projects}
+            onAdd={addTask}
+            onCancel={() => setFormOpen(false)}
+            defaultProjectId={selectedProjectId ?? undefined}
+            error={taskError}
+          />
         )}
-      </div>
 
-      <TaskInput onAdd={addTask} error={taskError} />
-
-      {loading ? (
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
-      ) : (
-        <>
-          {/* Main view */}
-          {selectedProjectId ? renderByProject() : (
-            view === 'today'      ? renderToday()      :
-            view === 'upcoming'   ? renderUpcoming()   :
-            view === 'by-project' ? renderByProject()  :
-                                    renderBacklog()
-          )}
-
-          {/* Completed section */}
-          {scopedCompleted.length > 0 && (
-            <div className="mt-6">
-              <button
-                onClick={() => setShowCompleted((v) => !v)}
-                className="mb-2 flex items-center gap-1 px-2 text-xs font-semibold uppercase tracking-wider transition-colors focus:outline-none"
-                style={{ color: 'var(--text-muted)' }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-              >
-                <span className={`transition-transform ${showCompleted ? 'rotate-90' : ''}`}>▶</span>
-                Completed ({scopedCompleted.length})
-              </button>
-              {showCompleted && (
-                <div>
-                  {scopedCompleted.map((task) => (
-                    <div
-                      key={task.id}
-                      className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors"
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
-                      style={{ borderBottom: '1px solid var(--divider)' }}
-                    >
-                      <span
-                        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-                        style={{ borderColor: 'var(--text-muted)', background: 'var(--text-muted)' }}
-                      >
-                        <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
-                      <span className="flex-1 text-sm line-through" style={{ color: 'var(--text-muted)' }}>
-                        {task.name}
-                      </span>
-                      {task.project && (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>#{task.project}</span>
-                      )}
-                      {task.completedAt && (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {formatCompletedDate(task.completedAt)}
-                        </span>
-                      )}
-                      <button
-                        onClick={() => deleteTask(task.id)}
-                        className="hidden text-lg leading-none transition-colors group-hover:block focus:outline-none"
-                        style={{ color: 'var(--text-muted)' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                      >
-                        ×
-                      </button>
+        {loading ? (
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading…</p>
+        ) : (
+          <>
+            {selectedProjectId ? (
+              // Single project view
+              <>
+                {viewTasks.length === 0 && (
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                    No tasks in {selectedProject?.name ?? 'this project'} yet.
+                  </p>
+                )}
+                {[...viewTasks].sort(byPriority).map(renderTask)}
+                <AddTaskRow projectId={selectedProjectId} />
+              </>
+            ) : (
+              // All projects grouped
+              <>
+                {projects.map((p) => {
+                  const pts = viewTasks.filter((t) => t.projectId === p.id);
+                  if (pts.length === 0) return null;
+                  return (
+                    <div key={p.id} style={{ marginBottom: 32 }}>
+                      <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: p.colour }}>#</span>
+                        <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.02em' }}>
+                          {p.name}
+                        </h2>
+                      </div>
+                      {[...pts].sort(byPriority).map(renderTask)}
+                      <AddTaskRow projectId={p.id} />
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
+                  );
+                })}
+                {viewTasks.filter((t) => !t.projectId).length > 0 && (
+                  <div style={{ marginBottom: 32 }}>
+                    <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
+                    <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+                      Inbox
+                    </h2>
+                    {[...viewTasks.filter((t) => !t.projectId)].sort(byPriority).map(renderTask)}
+                    <AddTaskRow />
+                  </div>
+                )}
+                {viewTasks.length === 0 && (
+                  <>
+                    <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No tasks yet.</p>
+                    <AddTaskRow />
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </>
+    );
+  }
+
+  // ── Backlog view ───────────────────────────────────────────────────────────
+  function renderBacklog() {
+    const backlog = viewTasks.filter((t) => t.isBacklog);
+    return (
+      <>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Backlog
+          </h1>
+        </div>
+
+        {formOpen && (
+          <InlineTaskForm projects={projects} onAdd={addTask} onCancel={() => setFormOpen(false)} error={taskError} />
+        )}
+
+        {loading ? (
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading…</p>
+        ) : (
+          <>
+            {backlog.length === 0 && (
+              <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No tasks in your backlog.</p>
+            )}
+            {[...backlog].sort(byPriority).map(renderTask)}
+            <AddTaskRow />
+          </>
+        )}
+      </>
+    );
+  }
+
+  // ── Inbox view (no project filter, show all without project) ───────────────
+  function renderInbox() {
+    const inbox = activeTasks.filter((t) => !t.projectId);
+    return (
+      <>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Inbox
+          </h1>
+        </div>
+
+        {formOpen && (
+          <InlineTaskForm projects={projects} onAdd={addTask} onCancel={() => setFormOpen(false)} error={taskError} />
+        )}
+
+        {loading ? (
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading…</p>
+        ) : (
+          <>
+            {inbox.length === 0 && (
+              <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Inbox is empty.</p>
+            )}
+            {[...inbox].sort(byPriority).map(renderTask)}
+            <AddTaskRow />
+          </>
+        )}
+      </>
+    );
+  }
+
+  // ── Route to correct view ──────────────────────────────────────────────────
+  if (selectedProjectId) return renderByProject();
+
+  switch (viewParam) {
+    case 'upcoming':   return renderUpcoming();
+    case 'by-project': return renderByProject();
+    case 'backlog':    return renderBacklog();
+    case 'inbox':      return renderInbox();
+    default:           return renderToday();
+  }
 }
