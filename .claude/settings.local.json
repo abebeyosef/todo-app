@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build 2>&1)",
+      "Bash(npm install chrono-node 2>&1)"
+    ]
+  }
+}

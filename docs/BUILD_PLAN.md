@@ -29,20 +29,20 @@ These are moments where Claude Code cannot proceed without real information from
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | Connect to GitHub | [ ] Pending |
-| 2 | App Shell & Layout | [ ] Pending |
-| 3 | Basic Task List | [ ] Pending |
-| 4 | Natural Language Input | [ ] Pending |
-| 5 | Supabase Database | [ ] Pending |
-| 6 | Project Categories | [ ] Pending |
-| 7 | Priority Levels | [ ] Pending |
-| 8 | Task Completion & Archive | [ ] Pending |
-| 9 | Habit Tracker Screen | [ ] Pending |
-| 10 | Monthly Habit Calendar | [ ] Pending |
-| 11 | Streak Counters | [ ] Pending |
-| 12 | Health Metric Logging | [ ] Pending |
-| 13 | Google Calendar Sync | [ ] Pending |
-| 14 | Customisable Views | [ ] Pending |
+| 1 | Connect to GitHub | [x] Done |
+| 2 | App Shell & Layout | [x] Done |
+| 3 | Basic Task List | [x] Done |
+| 4 | Natural Language Input | [x] Done |
+| 5 | Supabase Database | [x] Done |
+| 6 | Project Categories | [x] Done |
+| 7 | Priority Levels | [x] Done |
+| 8 | Task Completion & Archive | [x] Done |
+| 9 | Habit Tracker Screen | [x] Done |
+| 10 | Monthly Habit Calendar | [x] Done |
+| 11 | Streak Counters | [x] Done |
+| 12 | Health Metric Logging | [x] Done |
+| 13 | Google Calendar Sync | [x] Done |
+| 14 | Customisable Views | [x] Done |
 | 15 | Polish & Deploy to Vercel | [ ] Pending |
 
 ---
@@ -62,7 +62,7 @@ Before building, keep these rules in mind at all times:
 ## Phase 1 — Connect to GitHub
 **What this does:** Saves your project code to GitHub, which is like a remote backup of all your code. Every future change will be saved there automatically. This is also required for Vercel deployment later.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Inside `~/Desktop/ToDo`, check whether a Git repository already exists by running `git status`. If it does, skip to step 3.
@@ -86,7 +86,7 @@ Ask Yosef to: (a) confirm his GitHub username, (b) create the new repository on 
 ## Phase 2 — App Shell & Layout
 **What this does:** Replaces the default Next.js placeholder page with the actual skeleton of the app — a left sidebar for navigation and a main content area on the right. Nothing is functional yet, but the visual structure is in place.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Open `src/app/layout.tsx` and restructure it to include a persistent left sidebar and a main content area side by side. The sidebar should fill the full height of the screen.
@@ -111,7 +111,7 @@ Ask Yosef to: (a) confirm his GitHub username, (b) create the new repository on 
 ## Phase 3 — Basic Task List
 **What this does:** Builds the first working version of the task list. You can type a task, press Enter, see it appear, check it off, or delete it. All data is stored temporarily in the browser (no database yet — tasks disappear on refresh, which is intentional at this stage).
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Create `src/components/TaskInput.tsx` — a simple text input bar at the top of the tasks page. Pressing Enter submits the task.
@@ -144,7 +144,7 @@ Ask Yosef to: (a) confirm his GitHub username, (b) create the new repository on 
 ## Phase 4 — Natural Language Input
 **What this does:** Replaces the plain text input with a smart input bar that understands natural language commands. You can type things like `#health Morning run today 7am [45min] p1` and the app will automatically extract the project, task name, date, time, duration, and priority.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Install the date parsing library: `npm install chrono-node`
@@ -181,7 +181,7 @@ Ask Yosef to: (a) confirm his GitHub username, (b) create the new repository on 
 ## Phase 5 — Connect Supabase Database
 **What this does:** Connects the app to a real database so tasks are saved permanently. Tasks will no longer disappear when you refresh the page.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Ask Yosef to:
@@ -231,7 +231,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 6 — Project Categories
 **What this does:** Adds a proper project system. The sidebar shows your projects (Work, Personal, Health, App) with task counts. Tasks are grouped and filtered by project.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Create a `projects` table in Supabase:
@@ -275,7 +275,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 7 — Priority Levels
 **What this does:** Adds visual priority indicators (p1 = red, p2 = amber, p3 = grey) to every task. You can click the indicator to cycle through priorities without having to retype the task.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Update `TaskItem.tsx` to show a small coloured priority badge:
@@ -298,7 +298,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 8 — Task Completion & Archive
 **What this does:** Adds a proper completed tasks section. When you check off a task, it moves to a collapsible "Completed" section at the bottom of the list. Tasks are automatically deleted after 30 days.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Update `src/app/page.tsx` to separate tasks into two lists: active and completed.
@@ -319,7 +319,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 9 — Habit Tracker Screen
 **What this does:** Builds the Habit Tracker module. You define your own habits, and each day you check them off. The list resets every night at midnight.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Create the habits table in Supabase:
@@ -361,7 +361,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 10 — Monthly Habit Calendar
 **What this does:** Adds a colour-coded monthly calendar to the Habits page. Each day shows how many habits you completed that day, using a colour scale from red (almost nothing) to green (everything).
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Add a monthly calendar view at the top of `src/app/habits/page.tsx`.
@@ -386,7 +386,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 11 — Streak Counters
 **What this does:** Tracks your habit streaks. Shows your current streak (consecutive days at 100%) and your all-time best streak, prominently on the Habits page.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Create a server-side function (in `src/lib/streaks.ts`) that:
@@ -410,7 +410,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 12 — Health Metric Logging
 **What this does:** Adds optional daily health tracking fields alongside your habits — sleep hours, mood score (1–5), and water intake.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Create the health metrics table in Supabase:
@@ -441,7 +441,7 @@ Ask Yosef to create the Supabase project and provide: (a) the Project URL and (b
 ## Phase 13 — Google Calendar Sync
 **What this does:** Connects the app to your Google Calendar. When you add a task with a date and time, it automatically creates a calendar event. If you reschedule or delete the task, the event updates or disappears.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Ask Yosef to:
@@ -490,7 +490,7 @@ Ask Yosef to set up the Google Cloud project and provide the Client ID and Clien
 ## Phase 14 — Customisable Views
 **What this does:** Adds four views to the task manager — Today, Upcoming, By Project, and Backlog. The app remembers which view you were last using.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 ### Steps for Claude Code
 1. Add view tabs or a toggle at the top of the task page: Today | Upcoming | By Project | Backlog
