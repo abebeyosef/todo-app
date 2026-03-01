@@ -46,7 +46,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 15 | Polish & Deploy to Vercel | [x] Done |
 | 16 | UI Design Polish | [x] Done |
 | 17 | Bug Fixes & Full App Testing | [x] Done |
-| 18 | Todoist-Accurate Visual Redesign | [ ] Pending |
+| 18 | Todoist-Accurate Visual Redesign | [x] Done |
 
 ---
 
@@ -1130,7 +1130,20 @@ After fixing the known bugs, add proper error handling so future issues are visi
 ## Phase 18 — Todoist-Accurate Visual Redesign
 **What this does:** Fully replaces the Phase 16 design with a pixel-accurate recreation of the Todoist interface observed in the reference screen recording. This is a comprehensive rework of every visual element. Phase 16 remains in this document for reference but Phase 18 takes priority in every area where they conflict.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
+
+**Completion Notes:**
+- Updated all CSS variables to Phase 18 amber/warm token set; added compatibility aliases (--bg-app, --bg-card, --bg-hover, --accent-hover, --shadow-sm/md, --p1/p2/p3) so habits page and health log keep working without full rewrites.
+- Sidebar fully rewritten: 280px, user avatar (YA teal circle), amber Add task button firing `open-task-form` event, Lucide icons (Inbox/CalendarCheck/CalendarRange/ListTodo), `#` project symbols in colour, collapsible My Projects, amber active fill, no left border indicator.
+- Fixed top TaskInput bar removed; replaced with `InlineTaskForm` component (new file) that expands from `+ Add task` row in each view section. Sidebar button fires `open-task-form` window event to open global form at top of current view.
+- Task rows rewritten: drag handle (visual, hover-only), circle checkbox fades row on complete, date second line with overdue/upcoming colour, hover action icons (✏ edit, ··· context menu), flag priority icons replacing dots, p1 flag always visible.
+- Context menu on ··· click: priority flags (p1/p2/p3 + no-priority row) + delete (red).
+- ProjectModal redesigned: 440px card, Name field with 0/120 char count, named colour dropdown (7 colours) instead of swatches.
+- Toast system created (src/lib/toast.tsx with ToastProvider): dark bottom-left toasts, 5s auto-dismiss, Undo/Open action + × dismiss, stacks with gap. Task completion removes row immediately and shows Undo toast.
+- Today view: overdue section with "Reschedule" link, date header "Mar 1 · Today · Sunday", subtitle "✓ X tasks".
+- View routing switched from localStorage tabs to URL params (?view=today/upcoming/backlog/inbox); sidebar nav items push to correct URLs.
+- Build: `next build` passes cleanly. Commit: 244beb0.
+- **Success criteria met:** all 9 criteria confirmed against code — sidebar 280px/amber active/# projects, no fixed input bar, drag handle, flag priority, toast on complete, dark toast with Undo, clean project modal.
 
 **Important note for Claude Code:** Read every section of this phase before writing a single line of code. The changes are interconnected — the sidebar, task input, and task rows all need to change together. Do not partially implement.
 
