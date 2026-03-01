@@ -22,16 +22,10 @@ export default function Sidebar() {
   const [renaming, setRenaming] = useState<SidebarProject | null>(null);
 
   const loadProjects = useCallback(async () => {
-    const { data: projectRows } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at');
-
-    const { data: taskRows } = await supabase
-      .from('tasks')
-      .select('project_id')
-      .eq('completed', false);
-
+    const [{ data: projectRows }, { data: taskRows }] = await Promise.all([
+      supabase.from('projects').select('*').order('created_at'),
+      supabase.from('tasks').select('project_id').eq('completed', false),
+    ]);
     if (!projectRows) return;
 
     const counts: Record<string, number> = {};
@@ -43,11 +37,8 @@ export default function Sidebar() {
     setInboxCount(inbox);
     setProjects(
       projectRows.map((p) => ({
-        id: p.id,
-        name: p.name,
-        colour: p.colour,
-        createdAt: new Date(p.created_at),
-        taskCount: counts[p.id] ?? 0,
+        id: p.id, name: p.name, colour: p.colour,
+        createdAt: new Date(p.created_at), taskCount: counts[p.id] ?? 0,
       }))
     );
   }, []);
@@ -81,122 +72,129 @@ export default function Sidebar() {
 
   const isTasksPage = pathname === '/';
 
+  const navLinkClass = (active: boolean) =>
+    `relative flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors duration-100 ${
+      active
+        ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
+        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+    }`;
+
   return (
     <>
-      <aside className="flex h-screen w-52 flex-shrink-0 flex-col border-r border-gray-100 bg-white px-3 py-6">
+      <aside
+        className="flex h-screen flex-col overflow-y-auto"
+        style={{ width: 240, minWidth: 240, background: 'var(--bg-sidebar)' }}
+      >
         {/* App name */}
-        <div className="mb-6 px-2">
-          <span className="text-lg font-semibold tracking-tight text-gray-900">ToDo</span>
+        <div style={{ padding: '24px 24px 16px' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            ToDo
+          </span>
         </div>
 
         {/* Module nav */}
-        <nav className="mb-5 flex flex-col gap-1">
-          {[
-            { label: 'Tasks', href: '/' },
-            { label: 'Habits', href: '/habits' },
-          ].map(({ label, href }) => {
+        <nav className="flex flex-col gap-0.5 px-3">
+          {[{ label: 'Tasks', href: '/' }, { label: 'Habits', href: '/habits' }].map(({ label, href }) => {
             const active = pathname === href && !selectedProject;
             return (
-              <Link
-                key={href}
-                href={href}
-                className={`rounded-md px-2 py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
+              <Link key={href} href={href} className={navLinkClass(active)}>
+                {active && (
+                  <span
+                    className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full"
+                    style={{ background: 'var(--accent)' }}
+                  />
+                )}
                 {label}
               </Link>
             );
           })}
         </nav>
 
-        {/* Projects section — only on tasks page */}
+        {/* Projects — only on tasks page */}
         {isTasksPage && (
           <>
-            <p className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-              Projects
-            </p>
+            <div
+              className="mx-3 my-4"
+              style={{ height: 1, background: 'var(--divider)' }}
+            />
+            <div className="px-3">
+              <p
+                className="mb-1 px-2"
+                style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}
+              >
+                Projects
+              </p>
 
-            {/* Inbox */}
-            <button
-              onClick={() => router.push('/')}
-              className={`group flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors ${
-                isTasksPage && !selectedProject
-                  ? 'bg-gray-100 text-gray-900'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <span>Inbox</span>
-              {inboxCount > 0 && (
-                <span className="text-xs text-gray-400">{inboxCount}</span>
-              )}
-            </button>
+              {/* Inbox */}
+              <button
+                onClick={() => router.push('/')}
+                className={navLinkClass(isTasksPage && !selectedProject)}
+              >
+                {isTasksPage && !selectedProject && (
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
+                )}
+                <span className="flex-1 text-left">Inbox</span>
+                {inboxCount > 0 && (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{inboxCount}</span>
+                )}
+              </button>
 
-            {/* Project list */}
-            {projects.map((p) => (
-              <div key={p.id} className="group relative">
-                <button
-                  onClick={() => router.push(`/?project=${p.id}`)}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-                    selectedProject === p.id
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <span
-                    className="h-2 w-2 flex-shrink-0 rounded-full"
-                    style={{ backgroundColor: p.colour }}
-                  />
-                  <span className="flex-1 truncate text-left">{p.name}</span>
-                  {p.taskCount > 0 && (
-                    <span className="text-xs text-gray-400">{p.taskCount}</span>
-                  )}
-                </button>
-
-                {/* Hover actions */}
-                <div className="absolute right-1 top-1 hidden gap-1 group-hover:flex">
+              {/* Project list */}
+              {projects.map((p) => (
+                <div key={p.id} className="group relative">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setRenaming(p); }}
-                    className="rounded p-0.5 text-gray-400 hover:text-gray-700"
-                    title="Rename"
+                    onClick={() => router.push(`/?project=${p.id}`)}
+                    className={navLinkClass(selectedProject === p.id)}
                   >
-                    ✎
+                    {selectedProject === p.id && (
+                      <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full" style={{ background: 'var(--accent)' }} />
+                    )}
+                    <span
+                      className="flex-shrink-0 rounded-full"
+                      style={{ width: 10, height: 10, background: p.colour }}
+                    />
+                    <span className="flex-1 truncate text-left">{p.name}</span>
+                    {p.taskCount > 0 && (
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.taskCount}</span>
+                    )}
                   </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteProject(p); }}
-                    className="rounded p-0.5 text-gray-400 hover:text-red-500"
-                    title="Delete"
-                  >
-                    ×
-                  </button>
+                  {/* Hover actions */}
+                  <div className="absolute right-2 top-1.5 hidden gap-0.5 group-hover:flex">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRenaming(p); }}
+                      className="rounded p-1 transition-colors hover:bg-[var(--bg-hover)]"
+                      style={{ fontSize: 12, color: 'var(--text-muted)' }}
+                      title="Rename"
+                    >✎</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteProject(p); }}
+                      className="rounded p-1 transition-colors hover:bg-[var(--bg-hover)]"
+                      style={{ fontSize: 14, color: 'var(--text-muted)' }}
+                      title="Delete"
+                    >×</button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {/* New project */}
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-1 flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-            >
-              + New Project
-            </button>
+              {/* New project */}
+              <button
+                onClick={() => setShowModal(true)}
+                className="mt-1 flex h-8 w-full items-center gap-1 rounded-lg px-3 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                + New Project
+              </button>
+            </div>
           </>
         )}
 
-        {/* Google Calendar */}
-        <div className="mt-auto pt-4 border-t border-gray-100">
+        {/* Spacer + Calendar button */}
+        <div className="mt-auto border-t px-3 py-3" style={{ borderColor: 'var(--divider)' }}>
           <CalendarButton />
         </div>
       </aside>
 
-      {showModal && (
-        <ProjectModal
-          onSave={createProject}
-          onClose={() => setShowModal(false)}
-        />
-      )}
+      {showModal && <ProjectModal onSave={createProject} onClose={() => setShowModal(false)} />}
       {renaming && (
         <ProjectModal
           initial={{ name: renaming.name, colour: renaming.colour }}

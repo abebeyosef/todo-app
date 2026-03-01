@@ -40,16 +40,19 @@ export default function HealthLog() {
   };
 
   return (
-    <div className="mt-8 rounded-xl border border-gray-100 bg-gray-50 p-5">
+    <div
+      className="mt-8 rounded-xl p-5"
+      style={{ border: '1px solid var(--border)', background: 'var(--bg-input)' }}
+    >
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-700">Daily Health Log</h2>
-        {saving && <span className="text-xs text-gray-400">Saving…</span>}
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Daily Health Log</h2>
+        {saving && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Saving…</span>}
       </div>
 
       <div className="flex flex-col gap-5">
         {/* Sleep */}
         <div className="flex items-center justify-between gap-4">
-          <label className="text-sm text-gray-600">😴 Sleep</label>
+          <label className="text-sm" style={{ color: 'var(--text-secondary)' }}>😴 Sleep</label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -57,25 +60,30 @@ export default function HealthLog() {
               value={data.sleep_hours ?? ''}
               onChange={(e) => save({ sleep_hours: e.target.value ? parseFloat(e.target.value) : null })}
               placeholder="0"
-              className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-right text-sm transition-colors focus:border-gray-400 focus:outline-none"
+              className="w-20 rounded-lg px-3 py-1.5 text-right text-sm outline-none transition-all"
+              style={{ border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
-            <span className="w-6 text-sm text-gray-400">hrs</span>
+            <span className="w-6 text-sm" style={{ color: 'var(--text-muted)' }}>hrs</span>
           </div>
         </div>
 
         {/* Mood */}
         <div className="flex items-center justify-between gap-4">
-          <label className="text-sm text-gray-600">💭 Mood</label>
+          <label className="text-sm" style={{ color: 'var(--text-secondary)' }}>💭 Mood</label>
           <div className="flex gap-1">
             {MOODS.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => save({ mood_score: data.mood_score === value ? null : value })}
-                className={`rounded-lg px-2 py-1 text-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
-                  data.mood_score === value
-                    ? 'scale-110 bg-white shadow-sm ring-2 ring-gray-200'
-                    : 'opacity-40 hover:bg-white hover:opacity-80'
-                }`}
+                className="rounded-lg px-2 py-1 text-lg transition-all focus:outline-none"
+                style={{
+                  transform: data.mood_score === value ? 'scale(1.1)' : undefined,
+                  background: data.mood_score === value ? 'var(--bg-card)' : 'transparent',
+                  boxShadow: data.mood_score === value ? 'var(--shadow-sm)' : undefined,
+                  opacity: data.mood_score === value ? 1 : 0.4,
+                }}
                 title={`Mood ${value}/5`}
               >
                 {label}
@@ -86,7 +94,7 @@ export default function HealthLog() {
 
         {/* Water */}
         <div className="flex items-center justify-between gap-4">
-          <label className="text-sm text-gray-600">💧 Water</label>
+          <label className="text-sm" style={{ color: 'var(--text-secondary)' }}>💧 Water</label>
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -94,9 +102,12 @@ export default function HealthLog() {
               value={data.water_litres ?? ''}
               onChange={(e) => save({ water_litres: e.target.value ? parseFloat(e.target.value) : null })}
               placeholder="0"
-              className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-right text-sm transition-colors focus:border-gray-400 focus:outline-none"
+              className="w-20 rounded-lg px-3 py-1.5 text-right text-sm outline-none transition-all"
+              style={{ border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
-            <span className="w-6 text-sm text-gray-400">L</span>
+            <span className="w-6 text-sm" style={{ color: 'var(--text-muted)' }}>L</span>
           </div>
         </div>
       </div>

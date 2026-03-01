@@ -111,7 +111,6 @@ export default function HabitsPage() {
     reordered.splice(result.destination.index, 0, moved);
     const updated = reordered.map((h, i) => ({ ...h, sortOrder: i }));
     setHabits(updated);
-    // Persist new sort order
     await Promise.all(
       updated.map((h) =>
         supabase.from('habits').update({ sort_order: h.sortOrder }).eq('id', h.id)
@@ -123,31 +122,52 @@ export default function HabitsPage() {
   const total = habits.length;
 
   return (
-    <div className="max-w-xl">
+    <div style={{ maxWidth: 600 }}>
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Habits</h1>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Habits</h1>
           {!loading && total > 0 && (
-            <p className="mt-0.5 text-sm text-gray-400">
+            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
               {completedCount} of {total} done today
             </p>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Streak cards */}
           {!loading && (streaks.current > 0 || streaks.best > 0) && (
-            <div className="flex gap-3 text-sm text-gray-700">
-              <span title="Current streak">🔥 {streaks.current}d</span>
-              <span title="Best streak" className="text-gray-400">🏆 {streaks.best}d</span>
+            <div className="flex gap-2">
+              <div
+                className="rounded-xl px-3 py-2 text-center"
+                style={{ background: 'var(--bg-hover)', minWidth: 72 }}
+              >
+                <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Streak
+                </p>
+                <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  🔥 {streaks.current}d
+                </p>
+              </div>
+              <div
+                className="rounded-xl px-3 py-2 text-center"
+                style={{ background: 'var(--bg-hover)', minWidth: 72 }}
+              >
+                <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Best
+                </p>
+                <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  🏆 {streaks.best}d
+                </p>
+              </div>
             </div>
           )}
           <button
             onClick={() => setShowSettings((v) => !v)}
-            className={`rounded-lg px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
-              showSettings
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
-            }`}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none"
+            style={{
+              background: showSettings ? 'var(--accent)' : 'var(--bg-hover)',
+              color: showSettings ? '#fff' : 'var(--text-secondary)',
+            }}
           >
             {showSettings ? 'Done' : 'Manage'}
           </button>
@@ -157,35 +177,36 @@ export default function HabitsPage() {
       {!loading && <HabitCalendar habitCount={habits.length} />}
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : (
         <>
           {/* Daily checklist */}
           {!showSettings && (
             <div>
               {habits.length === 0 ? (
-                <p className="text-sm text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   No habits yet. Click <strong>Manage</strong> to add some.
                 </p>
               ) : (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col">
                   {habits.map((habit) => {
                     const done = checked.has(habit.id);
                     return (
                       <button
                         key={habit.id}
                         onClick={() => toggleHabit(habit.id)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                        className="flex items-center gap-3 rounded-lg px-2 text-left transition-colors hover:bg-[var(--bg-hover)] focus:outline-none"
+                        style={{ minHeight: 44, borderBottom: '1px solid var(--divider)' }}
                       >
                         <span
-                          className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                            done
-                              ? 'border-green-400 bg-green-400'
-                              : 'border-gray-300 hover:border-gray-400'
-                          }`}
+                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors"
+                          style={{
+                            borderColor: done ? '#16a34a' : 'var(--border)',
+                            background: done ? '#16a34a' : 'transparent',
+                          }}
                         >
                           {done && (
-                            <svg className="h-3.5 w-3.5 text-white" viewBox="0 0 12 12" fill="none">
+                            <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
                               <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
@@ -194,9 +215,11 @@ export default function HabitsPage() {
                           <span className="text-lg leading-none">{habit.emoji}</span>
                         )}
                         <span
-                          className={`text-sm font-medium ${
-                            done ? 'text-gray-400 line-through' : 'text-gray-800'
-                          }`}
+                          className="text-sm font-medium"
+                          style={{
+                            color: done ? 'var(--text-muted)' : 'var(--text-primary)',
+                            textDecoration: done ? 'line-through' : undefined,
+                          }}
                         >
                           {habit.name}
                         </span>
@@ -208,7 +231,7 @@ export default function HabitsPage() {
             </div>
           )}
 
-          {/* Health log — only shown on checklist view */}
+          {/* Health log */}
           {!showSettings && <HealthLog />}
 
           {/* Settings / manage panel */}
@@ -222,7 +245,10 @@ export default function HabitsPage() {
                   onChange={(e) => setNewEmoji(e.target.value)}
                   placeholder="😀"
                   maxLength={2}
-                  className="w-14 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-center text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
+                  className="w-14 rounded-lg px-2 py-2 text-center text-sm outline-none transition-all"
+                  style={{ border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
                 <input
                   type="text"
@@ -230,11 +256,17 @@ export default function HabitsPage() {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addHabit()}
                   placeholder="New habit name…"
-                  className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
+                  className="flex-1 rounded-lg px-3 py-2 text-sm outline-none transition-all"
+                  style={{ border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
                 <button
                   onClick={addHabit}
-                  className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors focus:outline-none"
+                  style={{ background: 'var(--accent)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--accent)')}
                 >
                   Add
                 </button>
@@ -242,7 +274,7 @@ export default function HabitsPage() {
 
               {/* Drag-and-drop list */}
               {habits.length === 0 ? (
-                <p className="text-sm text-gray-400">Add your first habit above.</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Add your first habit above.</p>
               ) : (
                 <DragDropContext onDragEnd={onDragEnd}>
                   <Droppable droppableId="habits">
@@ -258,26 +290,33 @@ export default function HabitsPage() {
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${
-                                  snapshot.isDragging
-                                    ? 'border-gray-300 bg-white shadow-md'
-                                    : 'border-transparent bg-gray-50'
-                                }`}
+                                className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                                style={{
+                                  border: `1px solid ${snapshot.isDragging ? 'var(--border)' : 'transparent'}`,
+                                  background: snapshot.isDragging ? 'var(--bg-card)' : 'var(--bg-input)',
+                                  boxShadow: snapshot.isDragging ? 'var(--shadow-md)' : undefined,
+                                  ...provided.draggableProps.style,
+                                }}
                               >
-                                {/* Drag handle */}
                                 <span
                                   {...provided.dragHandleProps}
-                                  className="cursor-grab text-gray-300 hover:text-gray-500"
+                                  className="cursor-grab"
+                                  style={{ color: 'var(--text-muted)' }}
                                 >
                                   ⠿
                                 </span>
                                 {habit.emoji && (
                                   <span className="text-lg leading-none">{habit.emoji}</span>
                                 )}
-                                <span className="flex-1 text-sm text-gray-800">{habit.name}</span>
+                                <span className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                                  {habit.name}
+                                </span>
                                 <button
                                   onClick={() => deleteHabit(habit.id)}
-                                  className="text-gray-300 hover:text-red-500"
+                                  className="transition-colors focus:outline-none"
+                                  style={{ color: 'var(--text-muted)' }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--p1)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
                                   aria-label="Delete habit"
                                 >
                                   ×

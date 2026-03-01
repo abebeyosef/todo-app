@@ -11,12 +11,11 @@ type DayData = {
 };
 
 function colourForPct(pct: number | null): string {
-  if (pct === null) return 'bg-gray-100';
-  if (pct === 0) return 'bg-gray-100';
-  if (pct < 0.2) return 'bg-red-300';
-  if (pct < 0.6) return 'bg-amber-300';
-  if (pct < 1) return 'bg-green-200';
-  return 'bg-green-400';
+  if (pct === null || pct === 0) return 'var(--habit-grey)';
+  if (pct < 0.2) return 'var(--habit-red)';
+  if (pct < 0.6) return 'var(--habit-amber)';
+  if (pct < 1) return 'var(--habit-lgreen)';
+  return 'var(--habit-green)';
 }
 
 function daysInMonth(year: number, month: number): number {
@@ -82,25 +81,35 @@ export default function HabitCalendar({ habitCount }: Props) {
     <div className="mb-8">
       {/* Month navigation */}
       <div className="mb-3 flex items-center justify-between">
-        <button onClick={prevMonth} className="rounded p-1 text-gray-400 hover:text-gray-700">◀</button>
-        <span className="text-sm font-semibold text-gray-700">{monthName}</span>
-        <button onClick={nextMonth} className="rounded p-1 text-gray-400 hover:text-gray-700">▶</button>
+        <button
+          onClick={prevMonth}
+          className="rounded p-1 transition-colors focus:outline-none"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+        >◀</button>
+        <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{monthName}</span>
+        <button
+          onClick={nextMonth}
+          className="rounded p-1 transition-colors focus:outline-none"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+        >▶</button>
       </div>
 
       {/* Day-of-week headers */}
       <div className="mb-1 grid grid-cols-7 gap-1 text-center">
         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-          <span key={i} className="text-xs text-gray-400">{d}</span>
+          <span key={i} className="text-xs" style={{ color: 'var(--text-muted)' }}>{d}</span>
         ))}
       </div>
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-1">
-        {/* Empty cells for offset */}
         {Array.from({ length: startOffset }).map((_, i) => (
           <div key={`e-${i}`} />
         ))}
-        {/* Day cells */}
         {Array.from({ length: totalDays }).map((_, i) => {
           const day = i + 1;
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -117,19 +126,26 @@ export default function HabitCalendar({ habitCount }: Props) {
               onMouseLeave={() => setTooltip(null)}
             >
               <div
-                className={`flex h-9 w-full items-center justify-center rounded text-xs font-medium transition-colors ${colour} ${
-                  isToday ? 'ring-2 ring-gray-400 ring-offset-1' : ''
-                } ${data ? 'cursor-pointer' : ''}`}
+                className={`flex h-9 w-full items-center justify-center rounded text-xs font-medium transition-colors ${data ? 'cursor-pointer' : ''}`}
+                style={{
+                  backgroundColor: colour,
+                  color: pct && pct >= 0.6 ? '#fff' : 'var(--text-secondary)',
+                  outline: isToday ? '2px solid var(--text-muted)' : undefined,
+                  outlineOffset: isToday ? '1px' : undefined,
+                }}
               >
                 {day}
               </div>
 
               {/* Tooltip */}
               {tooltip?.date === dateStr && tooltip.data && (
-                <div className="absolute bottom-full left-1/2 z-10 mb-1 w-36 -translate-x-1/2 rounded-lg bg-gray-900 px-2 py-1.5 text-xs text-white shadow-lg">
+                <div
+                  className="absolute bottom-full left-1/2 z-10 mb-1 w-36 -translate-x-1/2 rounded-lg px-2 py-1.5 text-xs text-white shadow-lg"
+                  style={{ background: 'var(--text-primary)' }}
+                >
                   <p className="mb-1 font-medium">{tooltip.data.count}/{habitCount} habits</p>
                   {tooltip.data.habits.map((h) => (
-                    <p key={h} className="text-gray-300">· {h}</p>
+                    <p key={h} style={{ color: 'var(--text-muted)' }}>· {h}</p>
                   ))}
                 </div>
               )}

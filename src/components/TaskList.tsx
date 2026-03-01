@@ -10,7 +10,7 @@ type Props = {
 
 export default function TaskList({ tasks, onComplete, onDelete, onPriorityChange }: Props) {
   if (tasks.length === 0) {
-    return <p className="mt-4 text-sm text-gray-400">No tasks yet. Add one above.</p>;
+    return <p className="mt-4 px-2 text-sm" style={{ color: 'var(--text-muted)' }}>No tasks yet. Add one above.</p>;
   }
 
   return (

@@ -73,7 +73,6 @@ const PRIORITY_ORDER = { p1: 0, p2: 1, p3: 2 };
 const byPriority = (a: Task, b: Task) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
 
 function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
-
 function todayStr() { return isoDate(new Date()); }
 
 function sameDay(a: Date, b: Date) {
@@ -214,14 +213,12 @@ export default function TasksPage() {
   const allActive = tasks.filter((t) => !t.completed);
   const completedTasks = tasks.filter((t) => t.completed);
 
-  // When a sidebar project is selected, override view and show that project's tasks
   const viewTasks = selectedProjectId
     ? allActive.filter((t) => t.projectId === selectedProjectId)
     : allActive;
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
-  // View-specific filtering
   const today = new Date();
   const in7Days = new Date(today);
   in7Days.setDate(today.getDate() + 7);
@@ -230,7 +227,6 @@ export default function TasksPage() {
     <TaskItem key={task.id} task={task} onComplete={completeTask} onDelete={deleteTask} onPriorityChange={updatePriority} />
   );
 
-  // Split high/low priority
   const high = (list: Task[]) => [...list.filter((t) => t.priority !== 'p3')].sort(byPriority);
   const low  = (list: Task[]) => [...list.filter((t) => t.priority === 'p3')];
 
@@ -239,20 +235,18 @@ export default function TasksPage() {
     const todayTasks = viewTasks.filter((t) => t.scheduledAt && sameDay(t.scheduledAt, today));
     const hi = high(todayTasks);
     const lo = low(todayTasks);
-    return renderPriorityGroups(hi, lo, 'Nothing scheduled for today.');
+    return renderPriorityGroups(hi, lo, 'All clear for today ✓');
   }
 
   function renderUpcoming() {
-    // Tasks scheduled in the next 7 days (including today), grouped by day
     const upcoming = viewTasks
       .filter((t) => t.scheduledAt && t.scheduledAt >= today && t.scheduledAt <= in7Days)
       .sort((a, b) => (a.scheduledAt!.getTime() - b.scheduledAt!.getTime()) || byPriority(a, b));
 
     if (upcoming.length === 0) {
-      return <p className="text-sm text-gray-400">Nothing in the next 7 days.</p>;
+      return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nothing coming up in the next 7 days.</p>;
     }
 
-    // Group by date string
     const groups = new Map<string, Task[]>();
     for (const t of upcoming) {
       const key = isoDate(t.scheduledAt!);
@@ -264,7 +258,10 @@ export default function TasksPage() {
       <div>
         {Array.from(groups.entries()).map(([dateStr, group]) => (
           <div key={dateStr} className="mb-6">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <h2
+              className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--text-muted)' }}
+            >
               {formatDayHeader(new Date(dateStr + 'T12:00:00'))}
             </h2>
             {group.map(renderTask)}
@@ -275,11 +272,15 @@ export default function TasksPage() {
   }
 
   function renderByProject() {
-    if (projects.length === 0) return <p className="text-sm text-gray-400">No projects yet.</p>;
+    if (projects.length === 0) {
+      return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No projects yet.</p>;
+    }
 
     const inboxTasks = viewTasks.filter((t) => !t.projectId);
     const hasContent = projects.some((p) => viewTasks.some((t) => t.projectId === p.id)) || inboxTasks.length > 0;
-    if (!hasContent) return <p className="text-sm text-gray-400">No tasks.</p>;
+    if (!hasContent) {
+      return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No tasks in this project.</p>;
+    }
 
     return (
       <div>
@@ -288,9 +289,11 @@ export default function TasksPage() {
           if (pts.length === 0) return null;
           return (
             <div key={p.id} className="mb-8">
-              <div className="mb-2 flex items-center gap-2">
+              <div className="mb-2 flex items-center gap-2 px-2">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.colour }} />
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">{p.name}</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                  {p.name}
+                </h2>
               </div>
               {[...pts].sort(byPriority).map(renderTask)}
             </div>
@@ -298,7 +301,9 @@ export default function TasksPage() {
         })}
         {inboxTasks.length > 0 && (
           <div className="mb-8">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Inbox</h2>
+            <h2 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Inbox
+            </h2>
             {[...inboxTasks].sort(byPriority).map(renderTask)}
           </div>
         )}
@@ -310,7 +315,7 @@ export default function TasksPage() {
     const backlog = viewTasks.filter((t) => t.isBacklog);
     const hi = high(backlog);
     const lo = low(backlog);
-    return renderPriorityGroups(hi, lo, 'No backlog tasks.');
+    return renderPriorityGroups(hi, lo, 'Backlog is empty.');
   }
 
   function renderPriorityGroups(hi: Task[], lo: Task[], emptyMsg: string) {
@@ -322,7 +327,10 @@ export default function TasksPage() {
           <div className="mb-6">
             <button
               onClick={() => setShowP3((v) => !v)}
-              className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-600"
+              className="mb-2 flex items-center gap-1 px-2 text-xs font-semibold uppercase tracking-wider transition-colors focus:outline-none"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
             >
               <span className={`transition-transform ${showP3 ? 'rotate-90' : ''}`}>▶</span>
               Low priority ({p3Count})
@@ -330,12 +338,14 @@ export default function TasksPage() {
             {showP3 && lo.map(renderTask)}
           </div>
         )}
-        {hi.length === 0 && p3Count === 0 && <p className="text-sm text-gray-400">{emptyMsg}</p>}
+        {hi.length === 0 && p3Count === 0 && (
+          <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>{emptyMsg}</p>
+        )}
       </>
     );
   }
 
-  // ── Completed section (all views) ─────────────────────────────────────────
+  // ── Completed section ──────────────────────────────────────────────────────
   const scopedCompleted = selectedProjectId
     ? completedTasks.filter((t) => t.projectId === selectedProjectId)
     : completedTasks;
@@ -351,35 +361,38 @@ export default function TasksPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl">
-      <h1 className="mb-4 text-2xl font-semibold text-gray-900">{pageTitle}</h1>
+    <div style={{ maxWidth: 680 }}>
+      {/* Header: title left, view pills right */}
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{pageTitle}</h1>
 
-      {/* View tabs — hidden when a specific project is selected */}
-      {!selectedProjectId && (
-        <div className="mb-6 flex gap-1 border-b border-gray-100 pb-0">
-          {VIEWS.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => changeView(id)}
-              className={`px-3 py-2 text-sm font-medium transition-colors ${
-                view === id
-                  ? 'border-b-2 border-gray-900 text-gray-900'
-                  : 'text-gray-400 hover:text-gray-700'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+        {!selectedProjectId && (
+          <div className="flex gap-0.5 rounded-xl p-1" style={{ background: 'var(--bg-hover)' }}>
+            {VIEWS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => changeView(id)}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-100 focus:outline-none"
+                style={{
+                  background: view === id ? 'var(--bg-card)' : 'transparent',
+                  color: view === id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  boxShadow: view === id ? 'var(--shadow-sm)' : undefined,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <TaskInput onAdd={addTask} />
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : (
         <>
-          {/* Main view content */}
+          {/* Main view */}
           {selectedProjectId ? renderByProject() : (
             view === 'today'      ? renderToday()      :
             view === 'upcoming'   ? renderUpcoming()   :
@@ -392,7 +405,10 @@ export default function TasksPage() {
             <div className="mt-6">
               <button
                 onClick={() => setShowCompleted((v) => !v)}
-                className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-600"
+                className="mb-2 flex items-center gap-1 px-2 text-xs font-semibold uppercase tracking-wider transition-colors focus:outline-none"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
               >
                 <span className={`transition-transform ${showCompleted ? 'rotate-90' : ''}`}>▶</span>
                 Completed ({scopedCompleted.length})
@@ -400,16 +416,39 @@ export default function TasksPage() {
               {showCompleted && (
                 <div>
                   {scopedCompleted.map((task) => (
-                    <div key={task.id} className="group flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-gray-50">
-                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-300">
+                    <div
+                      key={task.id}
+                      className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-[var(--bg-hover)]"
+                      style={{ borderBottom: '1px solid var(--divider)' }}
+                    >
+                      <span
+                        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
+                        style={{ borderColor: 'var(--text-muted)', background: 'var(--text-muted)' }}
+                      >
                         <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
                           <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
-                      <span className="flex-1 text-sm text-gray-400 line-through">{task.name}</span>
-                      {task.project && <span className="text-xs text-gray-300">#{task.project}</span>}
-                      {task.completedAt && <span className="text-xs text-gray-300">{formatCompletedDate(task.completedAt)}</span>}
-                      <button onClick={() => deleteTask(task.id)} className="hidden text-lg leading-none text-gray-300 hover:text-gray-500 group-hover:block">×</button>
+                      <span className="flex-1 text-sm line-through" style={{ color: 'var(--text-muted)' }}>
+                        {task.name}
+                      </span>
+                      {task.project && (
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>#{task.project}</span>
+                      )}
+                      {task.completedAt && (
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {formatCompletedDate(task.completedAt)}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => deleteTask(task.id)}
+                        className="hidden text-lg leading-none transition-colors group-hover:block focus:outline-none"
+                        style={{ color: 'var(--text-muted)' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>

@@ -22,9 +22,17 @@ export default function ProjectModal({ initial, onSave, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={onClose}>
-      <div className="w-80 rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h2 className="mb-4 text-base font-semibold text-gray-900">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.15)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-80 rounded-xl p-6"
+        style={{ background: 'var(--bg-card)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', animation: 'slideUp 200ms ease' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-4 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
           {initial ? 'Rename project' : 'New project'}
         </h2>
         <form onSubmit={handleSubmit}>
@@ -34,7 +42,16 @@ export default function ProjectModal({ initial, onSave, onClose }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Project name"
-            className="mb-4 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-gray-400 focus:outline-none"
+            className="mb-4 w-full rounded-lg px-3 py-2 text-sm outline-none transition-all"
+            style={{ border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent)';
+              e.currentTarget.style.background = 'var(--bg-card)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.background = 'var(--bg-input)';
+            }}
           />
           {/* Colour swatches */}
           <div className="mb-5 flex gap-2">
@@ -43,8 +60,13 @@ export default function ProjectModal({ initial, onSave, onClose }: Props) {
                 key={c}
                 type="button"
                 onClick={() => setColour(c)}
-                className={`h-6 w-6 rounded-full transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${colour === c ? 'scale-125' : 'hover:scale-110'}`}
-                style={{ backgroundColor: c, outlineColor: c }}
+                className="h-6 w-6 rounded-full transition-transform focus:outline-none"
+                style={{
+                  backgroundColor: c,
+                  transform: colour === c ? 'scale(1.25)' : undefined,
+                  outline: colour === c ? `2px solid ${c}` : undefined,
+                  outlineOffset: colour === c ? '2px' : undefined,
+                }}
                 aria-label={`Select colour ${c}`}
               />
             ))}
@@ -53,13 +75,19 @@ export default function ProjectModal({ initial, onSave, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+              className="rounded-lg px-3 py-1.5 text-sm transition-colors focus:outline-none"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-gray-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+              className="rounded-lg px-3 py-1.5 text-sm text-white transition-colors focus:outline-none"
+              style={{ background: 'var(--accent)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-hover)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--accent)')}
             >
               {initial ? 'Save' : 'Create'}
             </button>

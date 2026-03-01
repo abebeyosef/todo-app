@@ -9,10 +9,10 @@ type Props = {
   onPriorityChange: (id: string, priority: 'p1' | 'p2' | 'p3') => void;
 };
 
-const PRIORITY_STYLES: Record<string, string> = {
-  p1: 'bg-red-100 text-red-600 hover:bg-red-200',
-  p2: 'bg-amber-100 text-amber-600 hover:bg-amber-200',
-  p3: 'bg-gray-100 text-gray-400 hover:bg-gray-200',
+const PRIORITY_COLOUR: Record<string, string> = {
+  p1: 'var(--p1)',
+  p2: 'var(--p2)',
+  p3: 'var(--p3)',
 };
 
 const NEXT_PRIORITY: Record<string, 'p1' | 'p2' | 'p3'> = {
@@ -39,14 +39,26 @@ function formatDuration(minutes: number): string {
 }
 
 export default function TaskItem({ task, onComplete, onDelete, onPriorityChange }: Props) {
+  const isAlwaysVisible = task.priority === 'p1';
+
   return (
-    <div className="group flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50">
+    <div
+      className="group flex items-center gap-3 rounded-lg px-2 transition-colors duration-100 hover:bg-[var(--bg-hover)]"
+      style={{
+        minHeight: 44,
+        borderBottom: '1px solid var(--divider)',
+        opacity: task.completed ? 0.55 : 1,
+        transition: 'opacity 250ms ease, background-color 100ms ease',
+      }}
+    >
       {/* Checkbox */}
       <button
         onClick={() => onComplete(task.id)}
-        className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1 ${
-          task.completed ? 'border-gray-300 bg-gray-300' : 'border-gray-300 hover:border-gray-500'
-        }`}
+        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150 focus:outline-none"
+        style={{
+          borderColor: task.completed ? 'var(--text-muted)' : 'var(--border)',
+          background: task.completed ? 'var(--text-muted)' : 'transparent',
+        }}
         aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
       >
         {task.completed && (
@@ -57,39 +69,54 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange 
       </button>
 
       {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-1 flex-col py-2.5">
+        <div className="flex items-center gap-1.5">
           {task.projectColour && (
-            <span className="inline-block h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: task.projectColour }} />
+            <span
+              className="inline-block flex-shrink-0 rounded-full"
+              style={{ width: 8, height: 8, backgroundColor: task.projectColour }}
+            />
           )}
-          {task.project && (
-            <span className="text-xs font-medium text-gray-400">#{task.project}</span>
-          )}
-          <span className={`text-sm ${task.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+          <span
+            className="truncate text-sm font-medium"
+            style={{
+              color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)',
+              textDecoration: task.completed ? 'line-through' : undefined,
+            }}
+          >
             {task.name}
           </span>
         </div>
-        {(task.scheduledAt || task.duration) && (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+        {(task.project || task.scheduledAt || task.duration) && (
+          <div className="flex items-center gap-2 pt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+            {task.project && <span>#{task.project}</span>}
             {task.scheduledAt && <span>{formatDate(task.scheduledAt)}</span>}
             {task.duration && <span>· {formatDuration(task.duration)}</span>}
           </div>
         )}
       </div>
 
-      {/* Priority badge */}
+      {/* Priority dot */}
       <button
         onClick={() => onPriorityChange(task.id, NEXT_PRIORITY[task.priority])}
-        title="Click to change priority"
-        className={`flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${PRIORITY_STYLES[task.priority]}`}
+        title={`Priority: ${task.priority.toUpperCase()} — click to change`}
+        className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full transition-opacity duration-100 focus:outline-none ${
+          isAlwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}
       >
-        {task.priority.toUpperCase()}
+        <span
+          className="block rounded-full transition-transform duration-100 active:scale-150"
+          style={{ width: 8, height: 8, background: PRIORITY_COLOUR[task.priority] }}
+        />
       </button>
 
       {/* Delete */}
       <button
         onClick={() => onDelete(task.id)}
-        className="mt-0.5 hidden h-5 w-5 flex-shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 group-hover:flex focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+        className="hidden h-5 w-5 flex-shrink-0 items-center justify-center rounded text-lg leading-none transition-colors group-hover:flex focus:outline-none"
+        style={{ color: 'var(--text-muted)' }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
         aria-label="Delete task"
       >
         ×
