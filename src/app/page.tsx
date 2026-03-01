@@ -11,26 +11,39 @@ import { supabase } from '@/lib/supabase';
 
 // ── Calendar API helpers (server-side route) ───────────────────────────────
 async function calendarCreate(task: Task, accessToken: string): Promise<string | null> {
-  const res = await fetch('/api/calendar', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'create', accessToken, task }),
-  });
-  return (await res.json()).id ?? null;
+  try {
+    const res = await fetch('/api/calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create', accessToken, task }),
+    });
+    return (await res.json()).id ?? null;
+  } catch (err) {
+    console.error('Failed to create calendar event:', err);
+    return null;
+  }
 }
 async function calendarUpdate(task: Task, googleEventId: string, accessToken: string) {
-  await fetch('/api/calendar', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'update', accessToken, task, googleEventId }),
-  });
+  try {
+    await fetch('/api/calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', accessToken, task, googleEventId }),
+    });
+  } catch (err) {
+    console.error('Failed to update calendar event:', err);
+  }
 }
 async function calendarDelete(googleEventId: string, accessToken: string) {
-  await fetch('/api/calendar', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'delete', accessToken, googleEventId }),
-  });
+  try {
+    await fetch('/api/calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', accessToken, googleEventId }),
+    });
+  } catch (err) {
+    console.error('Failed to delete calendar event:', err);
+  }
 }
 
 // ── DB → app type ──────────────────────────────────────────────────────────
@@ -73,7 +86,6 @@ const PRIORITY_ORDER = { p1: 0, p2: 1, p3: 2 };
 const byPriority = (a: Task, b: Task) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
 
 function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
-function todayStr() { return isoDate(new Date()); }
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() &&
@@ -113,6 +125,7 @@ export default function TasksPage() {
   const [showP3, setShowP3] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [view, setView] = useState<View>('today');
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   // Load persisted view from localStorage
   useEffect(() => {
@@ -126,51 +139,69 @@ export default function TasksPage() {
   };
 
   const loadData = useCallback(async () => {
-    const [{ data: taskData }, { data: projectData }] = await Promise.all([
-      supabase.from('tasks').select('*, projects(name, colour)').order('created_at', { ascending: false }),
-      supabase.from('projects').select('*'),
-    ]);
-    if (taskData) setTasks((taskData as DbTask[]).map(dbToTask));
-    if (projectData) {
-      setProjects(projectData.map((p) => ({
-        id: p.id, name: p.name, colour: p.colour, createdAt: new Date(p.created_at),
-      })));
+    try {
+      const [{ data: taskData, error: tErr }, { data: projectData, error: pErr }] = await Promise.all([
+        supabase.from('tasks').select('*, projects(name, colour)').order('created_at', { ascending: false }),
+        supabase.from('projects').select('*'),
+      ]);
+      if (tErr) console.error('Failed to load tasks:', tErr);
+      if (pErr) console.error('Failed to load projects:', pErr);
+      if (taskData) setTasks((taskData as DbTask[]).map(dbToTask));
+      if (projectData) {
+        setProjects(projectData.map((p) => ({
+          id: p.id, name: p.name, colour: p.colour, createdAt: new Date(p.created_at),
+        })));
+      }
+    } catch (err) {
+      console.error('Unexpected error loading data:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const addTask = async (task: Task) => {
-    const matchedProject = task.project
-      ? projects.find((p) => p.name.toLowerCase() === task.project!.toLowerCase())
-      : null;
+    setTaskError(null);
+    try {
+      const matchedProject = task.project
+        ? projects.find((p) => p.name.toLowerCase() === task.project!.toLowerCase())
+        : null;
 
-    let googleEventId: string | null = null;
-    if (accessToken && task.scheduledAt) {
-      googleEventId = await calendarCreate(task, accessToken);
-    }
+      let googleEventId: string | null = null;
+      if (accessToken && task.scheduledAt) {
+        googleEventId = await calendarCreate(task, accessToken);
+      }
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert([{
-        name: task.name,
-        project: task.project ?? null,
-        project_id: matchedProject?.id ?? null,
-        scheduled_at: task.scheduledAt?.toISOString() ?? null,
-        duration: task.duration ?? null,
-        priority: task.priority,
-        is_backlog: task.isBacklog,
-        completed: false,
-        google_event_id: googleEventId,
-      }])
-      .select('*, projects(name, colour)')
-      .single();
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          name: task.name,
+          project: task.project ?? null,
+          project_id: matchedProject?.id ?? null,
+          scheduled_at: task.scheduledAt?.toISOString() ?? null,
+          duration: task.duration ?? null,
+          priority: task.priority,
+          is_backlog: task.isBacklog,
+          completed: false,
+          google_event_id: googleEventId,
+        }])
+        .select('*, projects(name, colour)')
+        .single();
 
-    if (!error && data) {
-      setTasks((prev) => [dbToTask(data as DbTask), ...prev]);
-      window.dispatchEvent(new Event('tasks-changed'));
+      if (error) {
+        console.error('Failed to insert task:', error);
+        setTaskError("Couldn't save task — please try again.");
+        return;
+      }
+      if (data) {
+        setTasks((prev) => [dbToTask(data as DbTask), ...prev]);
+        window.dispatchEvent(new Event('tasks-changed'));
+      }
+    } catch (err) {
+      console.error('Unexpected error adding task:', err);
+      setTaskError("Couldn't save task — please try again.");
     }
   };
 
@@ -178,35 +209,46 @@ export default function TasksPage() {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
     const nowCompleted = !task.completed;
-    const { error } = await supabase
-      .from('tasks')
-      .update({ completed: nowCompleted, completed_at: nowCompleted ? new Date().toISOString() : null })
-      .eq('id', id);
-    if (!error) {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: nowCompleted, completed_at: nowCompleted ? new Date().toISOString() : null })
+        .eq('id', id);
+      if (error) { console.error('Failed to complete task:', error); return; }
       const updated = { ...task, completed: nowCompleted, completedAt: nowCompleted ? new Date() : undefined };
       setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
       window.dispatchEvent(new Event('tasks-changed'));
       if (accessToken && task.googleEventId && task.scheduledAt) {
         await calendarUpdate(updated, task.googleEventId, accessToken);
       }
+    } catch (err) {
+      console.error('Unexpected error completing task:', err);
     }
   };
 
   const deleteTask = async (id: string) => {
     const task = tasks.find((t) => t.id === id);
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (!error) {
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) { console.error('Failed to delete task:', error); return; }
       setTasks((prev) => prev.filter((t) => t.id !== id));
       window.dispatchEvent(new Event('tasks-changed'));
       if (accessToken && task?.googleEventId) {
         await calendarDelete(task.googleEventId, accessToken);
       }
+    } catch (err) {
+      console.error('Unexpected error deleting task:', err);
     }
   };
 
   const updatePriority = async (id: string, priority: 'p1' | 'p2' | 'p3') => {
-    const { error } = await supabase.from('tasks').update({ priority }).eq('id', id);
-    if (!error) setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, priority } : t)));
+    try {
+      const { error } = await supabase.from('tasks').update({ priority }).eq('id', id);
+      if (error) { console.error('Failed to update priority:', error); return; }
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, priority } : t)));
+    } catch (err) {
+      console.error('Unexpected error updating priority:', err);
+    }
   };
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -235,7 +277,7 @@ export default function TasksPage() {
     const todayTasks = viewTasks.filter((t) => t.scheduledAt && sameDay(t.scheduledAt, today));
     const hi = high(todayTasks);
     const lo = low(todayTasks);
-    return renderPriorityGroups(hi, lo, 'All clear for today ✓');
+    return renderPriorityGroups(hi, lo, 'Nothing scheduled for today. Add one above ↑');
   }
 
   function renderUpcoming() {
@@ -244,7 +286,7 @@ export default function TasksPage() {
       .sort((a, b) => (a.scheduledAt!.getTime() - b.scheduledAt!.getTime()) || byPriority(a, b));
 
     if (upcoming.length === 0) {
-      return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nothing coming up in the next 7 days.</p>;
+      return <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>Your next 7 days are clear.</p>;
     }
 
     const groups = new Map<string, Task[]>();
@@ -273,13 +315,14 @@ export default function TasksPage() {
 
   function renderByProject() {
     if (projects.length === 0) {
-      return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No projects yet.</p>;
+      return <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>No projects yet.</p>;
     }
 
     const inboxTasks = viewTasks.filter((t) => !t.projectId);
     const hasContent = projects.some((p) => viewTasks.some((t) => t.projectId === p.id)) || inboxTasks.length > 0;
     if (!hasContent) {
-      return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No tasks in this project.</p>;
+      const msg = selectedProject ? `No tasks in ${selectedProject.name} yet.` : 'No tasks in this project.';
+      return <p className="px-2 text-sm" style={{ color: 'var(--text-muted)' }}>{msg}</p>;
     }
 
     return (
@@ -315,7 +358,7 @@ export default function TasksPage() {
     const backlog = viewTasks.filter((t) => t.isBacklog);
     const hi = high(backlog);
     const lo = low(backlog);
-    return renderPriorityGroups(hi, lo, 'Backlog is empty.');
+    return renderPriorityGroups(hi, lo, 'No tasks in your backlog.');
   }
 
   function renderPriorityGroups(hi: Task[], lo: Task[], emptyMsg: string) {
@@ -386,7 +429,7 @@ export default function TasksPage() {
         )}
       </div>
 
-      <TaskInput onAdd={addTask} />
+      <TaskInput onAdd={addTask} error={taskError} />
 
       {loading ? (
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>

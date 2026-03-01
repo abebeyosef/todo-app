@@ -20,34 +20,43 @@ export default function HabitsPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmoji, setNewEmoji] = useState('');
+  const [habitError, setHabitError] = useState<string | null>(null);
 
   const today = todayISO();
 
   const loadData = useCallback(async () => {
-    const [{ data: habitData }, { data: logData }, { data: allLogs }] = await Promise.all([
-      supabase.from('habits').select('*').order('sort_order'),
-      supabase.from('habit_logs').select('habit_id').eq('completed_on', today),
-      supabase.from('habit_logs').select('completed_on'),
-    ]);
+    try {
+      const [{ data: habitData, error: hErr }, { data: logData, error: lErr }, { data: allLogs, error: aErr }] = await Promise.all([
+        supabase.from('habits').select('*').order('sort_order'),
+        supabase.from('habit_logs').select('habit_id').eq('completed_on', today),
+        supabase.from('habit_logs').select('completed_on'),
+      ]);
+      if (hErr) console.error('Failed to load habits:', hErr);
+      if (lErr) console.error('Failed to load habit logs:', lErr);
+      if (aErr) console.error('Failed to load all habit logs:', aErr);
 
-    if (habitData) {
-      setHabits(
-        habitData.map((h) => ({
-          id: h.id,
-          name: h.name,
-          emoji: h.emoji ?? undefined,
-          sortOrder: h.sort_order,
-          createdAt: new Date(h.created_at),
-        }))
-      );
+      if (habitData) {
+        setHabits(
+          habitData.map((h) => ({
+            id: h.id,
+            name: h.name,
+            emoji: h.emoji ?? undefined,
+            sortOrder: h.sort_order,
+            createdAt: new Date(h.created_at),
+          }))
+        );
+      }
+      if (logData) {
+        setChecked(new Set(logData.map((l) => l.habit_id)));
+      }
+      if (habitData && allLogs) {
+        setStreaks(calculateStreaks(allLogs, habitData.length));
+      }
+    } catch (err) {
+      console.error('Unexpected error loading habit data:', err);
+    } finally {
+      setLoading(false);
     }
-    if (logData) {
-      setChecked(new Set(logData.map((l) => l.habit_id)));
-    }
-    if (habitData && allLogs) {
-      setStreaks(calculateStreaks(allLogs, habitData.length));
-    }
-    setLoading(false);
   }, [today]);
 
   useEffect(() => {
@@ -55,53 +64,80 @@ export default function HabitsPage() {
   }, [loadData]);
 
   const refreshStreaks = useCallback(async (currentHabitCount: number) => {
-    const { data: allLogs } = await supabase.from('habit_logs').select('completed_on');
-    if (allLogs) setStreaks(calculateStreaks(allLogs, currentHabitCount));
+    try {
+      const { data: allLogs, error } = await supabase.from('habit_logs').select('completed_on');
+      if (error) { console.error('Failed to load streak data:', error); return; }
+      if (allLogs) setStreaks(calculateStreaks(allLogs, currentHabitCount));
+    } catch (err) {
+      console.error('Unexpected error refreshing streaks:', err);
+    }
   }, []);
 
   const toggleHabit = async (habitId: string) => {
-    if (checked.has(habitId)) {
-      await supabase.from('habit_logs').delete().eq('habit_id', habitId).eq('completed_on', today);
-      setChecked((prev) => {
-        const next = new Set(prev);
-        next.delete(habitId);
-        return next;
-      });
-    } else {
-      await supabase.from('habit_logs').insert([{ habit_id: habitId, completed_on: today }]);
-      setChecked((prev) => new Set(prev).add(habitId));
+    try {
+      if (checked.has(habitId)) {
+        const { error } = await supabase.from('habit_logs').delete().eq('habit_id', habitId).eq('completed_on', today);
+        if (error) { console.error('Failed to uncheck habit:', error); return; }
+        setChecked((prev) => {
+          const next = new Set(prev);
+          next.delete(habitId);
+          return next;
+        });
+      } else {
+        const { error } = await supabase.from('habit_logs').insert([{ habit_id: habitId, completed_on: today }]);
+        if (error) { console.error('Failed to check habit:', error); return; }
+        setChecked((prev) => new Set(prev).add(habitId));
+      }
+      refreshStreaks(habits.length);
+    } catch (err) {
+      console.error('Unexpected error toggling habit:', err);
     }
-    refreshStreaks(habits.length);
   };
 
   const addHabit = async () => {
     const name = newName.trim();
     if (!name) return;
-    const maxOrder = habits.length ? Math.max(...habits.map((h) => h.sortOrder)) : -1;
-    const { data, error } = await supabase
-      .from('habits')
-      .insert([{ name, emoji: newEmoji.trim() || null, sort_order: maxOrder + 1 }])
-      .select()
-      .single();
-    if (!error && data) {
-      setHabits((prev) => [
-        ...prev,
-        { id: data.id, name: data.name, emoji: data.emoji ?? undefined, sortOrder: data.sort_order, createdAt: new Date(data.created_at) },
-      ]);
-      setNewName('');
-      setNewEmoji('');
+    setHabitError(null);
+    try {
+      const maxOrder = habits.length ? Math.max(...habits.map((h) => h.sortOrder)) : -1;
+      const { data, error } = await supabase
+        .from('habits')
+        .insert([{ name, emoji: newEmoji.trim() || null, sort_order: maxOrder + 1 }])
+        .select()
+        .single();
+      if (error) {
+        console.error('Failed to add habit:', error);
+        setHabitError("Couldn't add habit — please try again.");
+        return;
+      }
+      if (data) {
+        setHabits((prev) => [
+          ...prev,
+          { id: data.id, name: data.name, emoji: data.emoji ?? undefined, sortOrder: data.sort_order, createdAt: new Date(data.created_at) },
+        ]);
+        setNewName('');
+        setNewEmoji('');
+      }
+    } catch (err) {
+      console.error('Unexpected error adding habit:', err);
+      setHabitError("Couldn't add habit — please try again.");
     }
   };
 
   const deleteHabit = async (id: string) => {
     if (!confirm('Delete this habit? Historical logs will be kept.')) return;
-    await supabase.from('habits').delete().eq('id', id);
-    setHabits((prev) => prev.filter((h) => h.id !== id));
-    setChecked((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+    try {
+      const { error } = await supabase.from('habits').delete().eq('id', id);
+      if (error) { console.error('Failed to delete habit:', error); return; }
+      setHabits((prev) => prev.filter((h) => h.id !== id));
+      setChecked((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } catch (err) {
+      console.error('Unexpected error deleting habit:', err);
+    }
   };
 
   const onDragEnd = async (result: DropResult) => {
@@ -111,11 +147,15 @@ export default function HabitsPage() {
     reordered.splice(result.destination.index, 0, moved);
     const updated = reordered.map((h, i) => ({ ...h, sortOrder: i }));
     setHabits(updated);
-    await Promise.all(
-      updated.map((h) =>
-        supabase.from('habits').update({ sort_order: h.sortOrder }).eq('id', h.id)
-      )
-    );
+    try {
+      await Promise.all(
+        updated.map((h) =>
+          supabase.from('habits').update({ sort_order: h.sortOrder }).eq('id', h.id)
+        )
+      );
+    } catch (err) {
+      console.error('Failed to persist habit order:', err);
+    }
   };
 
   const completedCount = habits.filter((h) => checked.has(h.id)).length;
@@ -139,23 +179,23 @@ export default function HabitsPage() {
             <div className="flex gap-2">
               <div
                 className="rounded-xl px-3 py-2 text-center"
-                style={{ background: 'var(--bg-hover)', minWidth: 72 }}
+                style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', minWidth: 72 }}
               >
                 <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                   Streak
                 </p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                   🔥 {streaks.current}d
                 </p>
               </div>
               <div
                 className="rounded-xl px-3 py-2 text-center"
-                style={{ background: 'var(--bg-hover)', minWidth: 72 }}
+                style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', minWidth: 72 }}
               >
                 <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                   Best
                 </p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                   🏆 {streaks.best}d
                 </p>
               </div>
@@ -185,7 +225,7 @@ export default function HabitsPage() {
             <div>
               {habits.length === 0 ? (
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  No habits yet. Click <strong>Manage</strong> to add some.
+                  No habits set up yet. Add your first one below.
                 </p>
               ) : (
                 <div className="flex flex-col">
@@ -238,7 +278,7 @@ export default function HabitsPage() {
           {showSettings && (
             <div>
               {/* Add new habit */}
-              <div className="mb-6 flex gap-2">
+              <div className="mb-2 flex gap-2">
                 <input
                   type="text"
                   value={newEmoji}
@@ -253,13 +293,13 @@ export default function HabitsPage() {
                 <input
                   type="text"
                   value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
+                  onChange={(e) => { setNewName(e.target.value); setHabitError(null); }}
                   onKeyDown={(e) => e.key === 'Enter' && addHabit()}
                   placeholder="New habit name…"
                   className="flex-1 rounded-lg px-3 py-2 text-sm outline-none transition-all"
-                  style={{ border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+                  style={{ border: `1.5px solid ${habitError ? 'var(--p1)' : 'var(--border)'}`, background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = habitError ? 'var(--p1)' : 'var(--accent)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = habitError ? 'var(--p1)' : 'var(--border)')}
                 />
                 <button
                   onClick={addHabit}
@@ -271,6 +311,10 @@ export default function HabitsPage() {
                   Add
                 </button>
               </div>
+              {habitError && (
+                <p className="mb-4 text-xs" style={{ color: 'var(--p1)' }}>{habitError}</p>
+              )}
+              {!habitError && <div className="mb-4" />}
 
               {/* Drag-and-drop list */}
               {habits.length === 0 ? (
@@ -292,10 +336,11 @@ export default function HabitsPage() {
                                 {...provided.draggableProps}
                                 className="flex items-center gap-3 rounded-lg px-3 py-2.5"
                                 style={{
+                                  // draggableProps.style MUST come first so transforms work
+                                  ...provided.draggableProps.style,
                                   border: `1px solid ${snapshot.isDragging ? 'var(--border)' : 'transparent'}`,
                                   background: snapshot.isDragging ? 'var(--bg-card)' : 'var(--bg-input)',
                                   boxShadow: snapshot.isDragging ? 'var(--shadow-md)' : undefined,
-                                  ...provided.draggableProps.style,
                                 }}
                               >
                                 <span

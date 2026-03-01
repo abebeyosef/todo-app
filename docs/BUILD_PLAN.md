@@ -44,6 +44,8 @@ These are moments where Claude Code cannot proceed without real information from
 | 13 | Google Calendar Sync | [x] Done |
 | 14 | Customisable Views | [x] Done |
 | 15 | Polish & Deploy to Vercel | [x] Done |
+| 16 | UI Design Polish | [x] Done |
+| 17 | Bug Fixes & Full App Testing | [x] Done |
 
 ---
 
@@ -559,4 +561,409 @@ Ask Yosef to set up the Google Cloud project and provide the Client ID and Clien
 
 ---
 
-*End of Build Plan — 15 Phases | Start at Phase 1*
+## Phase 16 — UI Design Polish
+**What this does:** Transforms the app from functional-but-plain into something that looks and feels premium — clean, calm, and professional. The design reference is Todoist (warm neutrals, precise typography, refined sidebar), with influences from Things 3 (extreme minimalism, generous whitespace) and Linear (crisp layout, subtle depth). Every detail below is intentional. Do not skip any step.
+
+**Status:** [ ] Pending
+
+---
+
+### 16.1 — Colour System
+
+Replace any ad-hoc colours in the codebase with this exact design token system. Define these as CSS custom properties in `src/app/globals.css` and use them everywhere.
+
+```css
+:root {
+  /* Backgrounds */
+  --bg-app:        #FEFDFC;   /* Warm white — main app background (Todoist-inspired) */
+  --bg-sidebar:    #F5F3F0;   /* Slightly darker warm grey — sidebar */
+  --bg-hover:      #EDEAE6;   /* Subtle hover state on sidebar items */
+  --bg-card:       #FFFFFF;   /* Pure white — task cards / input bar */
+  --bg-input:      #F7F6F4;   /* Input field background when unfocused */
+
+  /* Text */
+  --text-primary:  #25221E;   /* Near-black — task names, headings */
+  --text-secondary:#6B6560;   /* Medium grey — dates, metadata, placeholders */
+  --text-muted:    #B0ABA5;   /* Light grey — empty states, disabled */
+
+  /* Accent */
+  --accent:        #DB4035;   /* Todoist red — primary action, active nav, p1 badge */
+  --accent-hover:  #C0392B;   /* Darker red — hover on accent elements */
+
+  /* Priority colours */
+  --p1:            #DB4035;   /* Red */
+  --p2:            #FF9800;   /* Amber */
+  --p3:            #9E9E9E;   /* Grey */
+
+  /* Habit calendar colours */
+  --habit-green:   #2E7D32;
+  --habit-lgreen:  #66BB6A;
+  --habit-amber:   #FF9800;
+  --habit-red:     #EF5350;
+  --habit-grey:    #E0E0E0;
+
+  /* Borders & dividers */
+  --border:        #E8E4DF;   /* Subtle warm border */
+  --divider:       #F0ECE8;   /* Even subtler — between task rows */
+
+  /* Shadows */
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md:     0 4px 12px rgba(0,0,0,0.08);
+}
+```
+
+---
+
+### 16.2 — Typography
+
+Install and apply the Inter font from Google Fonts. Add this to `src/app/layout.tsx`:
+
+```tsx
+import { Inter } from 'next/font/google'
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+```
+
+Apply these exact type styles throughout the app using Tailwind classes or inline styles:
+
+| Element | Size | Weight | Colour |
+|---|---|---|---|
+| App name ("ToDo") | 16px | 700 | `--text-primary` |
+| Sidebar nav items | 14px | 500 | `--text-primary` |
+| Section headings (e.g. "Today") | 22px | 700 | `--text-primary` |
+| Task name | 14px | 400 | `--text-primary` |
+| Task metadata (date, project, duration) | 12px | 400 | `--text-secondary` |
+| Input placeholder | 14px | 400 | `--text-muted` |
+| Priority badge | 11px | 600 | White |
+| Empty state message | 14px | 400 | `--text-muted` |
+
+Rules:
+- Never use more than two font weights on any single screen
+- Line height for task names: 1.5. For headings: 1.2.
+- Letter spacing for section headings: `-0.02em`
+
+---
+
+### 16.3 — Sidebar
+
+The sidebar is the spine of the app. It should feel calm and organised, not cluttered.
+
+**Structure (top to bottom):**
+1. App name / logo — "ToDo" in bold, with 24px padding top and left
+2. 16px gap
+3. Navigation section — "Tasks" and "Habits" links
+4. 24px gap + a subtle horizontal divider (`--divider`)
+5. "Projects" label (10px, uppercase, letter-spacing 0.08em, `--text-muted`)
+6. Project list (Work, Personal, Health, App, Inbox)
+7. "+ New Project" button at the bottom of the project list
+8. Spacer to push the bottom section down
+9. Google Calendar connection status at the very bottom
+
+**Sidebar width:** exactly `240px`. Fixed, not resizable.
+
+**Nav item styling:**
+- Height: 36px, padding: 0 12px
+- Border radius: 8px
+- Active state: `--bg-hover` background + `--accent` coloured left bar (3px wide, full height, border-radius 2px)
+- Hover state: `--bg-hover` background, transition 100ms ease
+- Icon (optional): 16px, same colour as text, 8px gap to the right of icon
+
+**Project items:**
+- Same height and padding as nav items
+- Left: a 10px filled circle in the project's colour
+- Middle: project name
+- Right: task count in `--text-muted`, 12px
+
+**Sidebar background:** `--bg-sidebar`. No border-right — use the colour difference to create natural separation.
+
+---
+
+### 16.4 — Task Input Bar
+
+This is the most-used element in the app. It must feel prominent and inviting.
+
+- Position: fixed at the top of the main content area, full width of the content column
+- Height: 52px
+- Background: `--bg-card` with `var(--shadow-sm)`
+- Border: 1.5px solid `--border`, border-radius: 12px
+- Padding: 0 16px
+- Placeholder text: "Add a task — try #project task name tomorrow 2pm [1hr] p1"
+- Font size: 14px, colour `--text-muted` for placeholder, `--text-primary` when typing
+- On focus: border colour transitions to `--accent`, shadow lifts to `var(--shadow-md)`, transition 150ms ease
+- Submit button (→ arrow or ↵): appears on the right side only when the input has content. Colour: `--accent`. Clicking it submits. Hidden when empty.
+- Margin below the bar before the task list: 24px
+
+---
+
+### 16.5 — Task List & Task Rows
+
+Each task row is the core unit of the app. Make it feel light and readable.
+
+**Task row layout (left to right):**
+1. Checkbox — 18px circle, border 1.5px `--border`. On hover, border turns `--accent`. On check: fills with `--accent`, shows a white checkmark, then the row slides up and fades out over 250ms.
+2. 12px gap
+3. Task name — 14px, `--text-primary`
+4. Below task name (if metadata exists): project dot + project name + date + duration in 12px `--text-secondary`, on a second line
+5. Right-aligned: priority badge (see 16.6)
+
+**Row styling:**
+- Height: minimum 44px (taller if two lines of content)
+- Padding: 10px 0
+- Bottom border: 1px solid `--divider` (not on the last item)
+- No background colour on rows — they sit directly on `--bg-app`
+- Hover: very subtle `--bg-hover` background, border-radius 8px, transition 80ms
+
+**Section headings** (e.g. "Today", "Tomorrow", "Overdue"):
+- 13px, uppercase, letter-spacing 0.06em, `--text-muted`
+- 24px margin top, 8px margin bottom
+- No background or box
+
+**Completed tasks section:**
+- Collapsed by default, toggle with a chevron
+- Task names: colour `--text-muted`, text-decoration: line-through
+- Completion date shown in 12px `--text-muted` on the right
+
+---
+
+### 16.6 — Priority Badges
+
+Replace any chunky labels with small, refined indicators.
+
+- Style: a small filled dot, 8px diameter, inline with the task row on the right side
+- p1: `--p1` (red dot)
+- p2: `--p2` (amber dot) — shown only on hover of the task row (to reduce visual noise; p2 is the default)
+- p3: `--p3` (grey dot)
+- On click: cycles p1 → p2 → p3 → p1, updates Supabase, shows a brief scale animation (scale 1.4 → 1.0 over 150ms)
+- Tooltip on hover: "Priority 1 — click to change"
+
+---
+
+### 16.7 — Empty States
+
+Every empty state should feel calm and encouraging, not like an error.
+
+| View | Empty state message |
+|---|---|
+| Today — no tasks | "Nothing scheduled for today. Add one above ↑" |
+| Upcoming — no tasks | "Your next 7 days are clear." |
+| Backlog — empty | "No tasks in your backlog." |
+| A project — empty | "No tasks in [Project Name] yet." |
+| Habits — none added | "No habits set up yet. Add your first one below." |
+
+Styling: message centred vertically in the content area, `--text-muted`, 14px. No illustration needed — clean text only.
+
+---
+
+### 16.8 — Habit Tracker Screen
+
+**Daily checklist:**
+- Each habit row: same height and layout as a task row
+- Emoji (if set) shown at 18px before the habit name
+- Checkbox style: same as task rows, but on completion fills with a softer green (`--habit-green`) instead of red
+
+**Monthly calendar:**
+- Each day cell: 36px × 36px, border-radius 6px, the completion colour as background
+- Date number inside: 11px, white if background is dark, `--text-secondary` if cell is grey
+- Today's cell: thin `--accent` border (1.5px), even if it has a colour
+- Calendar grid: 7 columns, aligned to Mon–Sun. Month name and year as heading above.
+- Prev/Next month navigation: small arrow buttons, right-aligned on the heading row
+
+**Streak counters:**
+- Displayed in two cards at the top of the habits page, side by side
+- Card: white background, `var(--shadow-sm)`, border-radius 12px, padding 16px 20px
+- Large number: 32px, 700 weight, `--text-primary`
+- Label below: "Current streak" / "Best streak", 12px, `--text-muted`
+- Fire emoji 🔥 before current streak number. Trophy emoji 🏆 before best streak.
+
+---
+
+### 16.9 — Micro-interactions & Transitions
+
+These small touches make the app feel alive and polished.
+
+- **Task completion:** checkbox fill + row fade-out: 250ms ease
+- **Sidebar active link change:** background transition: 100ms ease
+- **Input bar focus:** border + shadow transition: 150ms ease
+- **Priority badge click:** scale pop: 150ms ease
+- **Modal open (new project):** fade in + slide up 8px: 200ms ease
+- **Completed section expand/collapse:** height transition: 200ms ease
+- **Habit checkbox:** same as task completion, but green fill
+- All transitions: use `transition` CSS property. Never use JavaScript for animations that CSS can handle.
+
+---
+
+### 16.10 — Layout & Spacing System
+
+Use only these spacing values (in px) throughout the entire app. Do not invent new ones.
+
+`4, 8, 12, 16, 20, 24, 32, 40, 48, 64`
+
+Key layout measurements:
+- Sidebar width: 240px
+- Main content max-width: 680px (centred in the remaining space)
+- Main content horizontal padding: 40px each side
+- Top padding below page heading: 32px
+- Gap between input bar and task list: 24px
+- Gap between task sections: 32px
+
+**Page heading area:**
+- Page title (e.g. "Today", "Upcoming", "Health") — 22px, 700, `--text-primary`
+- Subtitle (e.g. "Sunday, 1 March" or task count) — 13px, `--text-secondary`, 4px below title
+- View switcher tabs (Today / Upcoming / By Project / Backlog): placed to the right of the heading, 13px, pill-style tabs. Active tab: `--accent` background, white text. Inactive: `--bg-hover`, `--text-secondary`.
+
+---
+
+### 16.11 — Final QA Checklist
+
+Before pushing to GitHub and deploying, go through every item below:
+
+**Visual consistency**
+- [ ] Every screen uses only the colours defined in Section 16.1
+- [ ] Font sizes match the table in Section 16.2 on every screen
+- [ ] Spacing uses only the values listed in Section 16.10
+- [ ] No default Tailwind blue anywhere in the app
+
+**Interactions**
+- [ ] All transitions run at the specified durations
+- [ ] Task completion animation works correctly
+- [ ] Priority badge cycles correctly and updates the database
+- [ ] Input bar focus state (border + shadow) works
+
+**Content**
+- [ ] All empty states show the correct messages from Section 16.7
+- [ ] Sidebar shows correct task counts per project
+- [ ] Habit calendar colours match the thresholds in Section 6.6 of the handoff doc
+
+**Cross-browser**
+- [ ] Test in Safari and Chrome on Mac
+- [ ] Nothing overflows or breaks at 1280px wide browser window
+- [ ] Nothing overflows or breaks at 1440px wide
+
+**After QA passes:** commit all changes with message `"Phase 16 — UI design polish"` and push to GitHub. Vercel will auto-deploy.
+
+---
+
+## Phase 17 — Bug Fixes & Full App Testing
+**What this does:** Systematically tests every feature in the app, documents what works and what doesn't, and fixes all known bugs. Do not skip any test. After fixing each bug, re-test that specific feature before moving on.
+
+**Status:** [ ] Pending
+
+---
+
+### 17.0 — Known Bugs to Fix First
+
+Fix these confirmed bugs before running the full test suite below.
+
+**Bug 1: Tasks without a project should go to Inbox**
+- Currently, tasks typed without a `#project` tag have no project assigned and may not appear anywhere.
+- Fix: In `src/lib/parseTask.ts`, when no `#project` tag is detected, set `project` to `"Inbox"` (matching the Inbox project in the database by name).
+- In `src/app/page.tsx` (or wherever tasks are saved), if the parsed project is `"Inbox"`, look up the Inbox project ID from Supabase and assign it. If no Inbox project exists in the database, create it automatically on first use.
+- Confirm: Type a task with no `#tag` — it should appear under Inbox in the sidebar.
+
+**Bug 2: Adding a project does nothing**
+- Investigate `src/components/ProjectModal.tsx` (or wherever the new project form lives).
+- Check the browser console (right-click → Inspect → Console tab) for any red error messages when submitting a new project.
+- Likely causes: (a) the Supabase insert is failing silently, (b) the form submit handler is not wired up correctly, (c) the modal closes before the insert completes.
+- Fix the root cause. After fixing, confirm: creating a new project adds it to the sidebar immediately with a task count of 0.
+
+**Bug 3: Adding a task does nothing**
+- Investigate `src/components/TaskInput.tsx`.
+- Check the browser console for errors on task submission.
+- Likely causes: (a) the Supabase insert is failing (check environment variables are set correctly on Vercel), (b) the natural language parser is throwing an error and silently swallowing it, (c) the task list is not re-fetching after insert.
+- Fix the root cause. After fixing, confirm: typing a task and pressing Enter adds it to the list immediately.
+
+**Bug 4: Can't add a habit**
+- Investigate `src/app/habits/page.tsx` and the habit settings panel.
+- Check the browser console for errors when submitting a new habit.
+- Likely causes: same as Bug 3 — silent failure on Supabase insert, or form handler not connected.
+- Fix the root cause. After fixing, confirm: adding a habit name and pressing Enter or clicking Add shows it in the daily checklist immediately.
+
+---
+
+### 17.1 — Full Test Suite
+
+Run through every test below in order. For each test, record the result as PASS or FAIL in a comment in the terminal. Fix any FAILs before moving on.
+
+**Test environment:** Run tests on the live Vercel URL, not just localhost. Both should work.
+
+#### Task Manager
+
+| # | Test | How to test | Expected result |
+|---|------|-------------|-----------------|
+| T1 | Add task with no project | Type `Buy groceries` and press Enter | Task appears in Inbox |
+| T2 | Add task with project tag | Type `#personal Book a dentist appointment tomorrow 3pm` | Task appears under Personal, scheduled for tomorrow at 3pm |
+| T3 | Add task with all fields | Type `#work Finish report friday 2pm [1hr] p1` | Task appears in Work, Friday 2pm, 1 hour duration, p1 priority |
+| T4 | p1 priority floats to top | Add a p3 task, then a p1 task | p1 task appears above p3 task |
+| T5 | p3 tasks collapsed | Add a p3 task | It appears in a collapsed "Low priority" section |
+| T6 | Complete a task | Click the checkbox on any task | Task moves to Completed section with a strikethrough |
+| T7 | Delete a task | Hover a task and click delete | Task disappears from the list and from Supabase |
+| T8 | Completed section collapsed | Complete a task | Completed section is collapsed by default, shows count |
+| T9 | Expand completed section | Click the Completed section header | Completed tasks become visible |
+| T10 | Cycle priority | Click the priority dot on a task | Priority cycles p1 → p2 → p3 → p1, updates in Supabase |
+| T11 | Today view | Switch to Today view | Only tasks scheduled for today appear |
+| T12 | Upcoming view | Switch to Upcoming view | Tasks for the next 7 days, grouped by day |
+| T13 | Backlog view | Switch to Backlog view | Tasks with no date |
+| T14 | By Project view | Switch to By Project view | All tasks grouped under their project headings |
+| T15 | View remembered | Switch to Upcoming, close the browser tab, reopen | Upcoming view is still selected |
+| T16 | Inbox project | Add a task with no `#tag` | It appears under Inbox in the sidebar |
+
+#### Project Management
+
+| # | Test | How to test | Expected result |
+|---|------|-------------|-----------------|
+| P1 | Create new project | Click "+ New Project", enter name and pick colour | Project appears in sidebar with count 0 |
+| P2 | Filter by project | Click a project in the sidebar | Task list filters to that project only |
+| P3 | Task count updates | Add a task to a project | Sidebar count for that project increments |
+| P4 | Rename project | Right-click or click edit on a project | Can rename it; sidebar updates immediately |
+| P5 | Delete project | Delete a project | Its tasks move to Inbox; project disappears from sidebar |
+
+#### Habit Tracker
+
+| # | Test | How to test | Expected result |
+|---|------|-------------|-----------------|
+| H1 | Add a habit | Open habits settings, add "Morning walk" | Habit appears in the daily checklist |
+| H2 | Check off a habit | Click the checkbox on a habit | Checkbox fills green; logged in Supabase |
+| H3 | Uncheck a habit | Click a checked habit | Unchecked; row removed from habit_logs |
+| H4 | Reorder habits | Drag a habit up or down | Order updates and persists after refresh |
+| H5 | Delete a habit | Delete a habit | Disappears from checklist; historical data preserved |
+| H6 | Calendar colours | Complete all habits today | Today's cell shows green on the monthly calendar |
+| H7 | Calendar navigation | Click previous month | Calendar shows last month's data |
+| H8 | Streak counter | Complete all habits for 2+ consecutive days | Current streak shows correct number |
+
+#### Google Calendar Sync
+
+| # | Test | How to test | Expected result |
+|---|------|-------------|-----------------|
+| G1 | Connect Google Calendar | Click "Connect Google Calendar" | Google sign-in opens, then returns to app connected |
+| G2 | Task creates event | Add `#work Test event tomorrow 4pm [30min]` | Event appears in Google Calendar |
+| G3 | Delete task removes event | Delete that task | Event disappears from Google Calendar |
+| G4 | Complete task updates event | Complete a task with a calendar event | Event title gets ✓ prefix |
+
+---
+
+### 17.2 — Error Handling Improvements
+
+After fixing the known bugs, add proper error handling so future issues are visible rather than silent.
+
+1. **Task input:** If the Supabase insert fails, show a small red error message below the input bar: "Couldn't save task — please try again." The input text should remain so it's not lost.
+2. **Project creation:** If insert fails, show an inline error inside the modal.
+3. **Habit creation:** If insert fails, show an inline error in the settings panel.
+4. **General:** Add a try/catch around every Supabase call in the codebase. Log the error to the console with a descriptive message (e.g. `console.error('Failed to insert task:', error)`). Never let errors fail silently.
+
+---
+
+### 17.3 — After All Tests Pass
+
+1. Commit all fixes: `git commit -m "Phase 17 — bug fixes and full test suite passed"`
+2. Push to GitHub: `git push origin main`
+3. Wait for Vercel to auto-deploy (usually under 2 minutes)
+4. Re-run tests T1, T3, P1, H1, and G1 on the live Vercel URL to confirm the deployment is working
+
+### Success Criteria
+- All tests in 17.1 marked as PASS
+- No silent errors anywhere in the app
+- All four known bugs (17.0) confirmed fixed
+- Live Vercel deployment passes spot-check tests
+
+---
+
+*End of Build Plan — 17 Phases*

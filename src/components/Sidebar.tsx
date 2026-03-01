@@ -20,27 +20,34 @@ export default function Sidebar() {
   const [inboxCount, setInboxCount] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [renaming, setRenaming] = useState<SidebarProject | null>(null);
+  const [projectError, setProjectError] = useState<string | null>(null);
 
   const loadProjects = useCallback(async () => {
-    const [{ data: projectRows }, { data: taskRows }] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at'),
-      supabase.from('tasks').select('project_id').eq('completed', false),
-    ]);
-    if (!projectRows) return;
+    try {
+      const [{ data: projectRows, error: pErr }, { data: taskRows, error: tErr }] = await Promise.all([
+        supabase.from('projects').select('*').order('created_at'),
+        supabase.from('tasks').select('project_id').eq('completed', false),
+      ]);
+      if (pErr) { console.error('Failed to load projects:', pErr); return; }
+      if (tErr) { console.error('Failed to load task counts:', tErr); return; }
+      if (!projectRows) return;
 
-    const counts: Record<string, number> = {};
-    let inbox = 0;
-    for (const t of taskRows ?? []) {
-      if (t.project_id) counts[t.project_id] = (counts[t.project_id] ?? 0) + 1;
-      else inbox++;
+      const counts: Record<string, number> = {};
+      let inbox = 0;
+      for (const t of taskRows ?? []) {
+        if (t.project_id) counts[t.project_id] = (counts[t.project_id] ?? 0) + 1;
+        else inbox++;
+      }
+      setInboxCount(inbox);
+      setProjects(
+        projectRows.map((p) => ({
+          id: p.id, name: p.name, colour: p.colour,
+          createdAt: new Date(p.created_at), taskCount: counts[p.id] ?? 0,
+        }))
+      );
+    } catch (err) {
+      console.error('Unexpected error loading projects:', err);
     }
-    setInboxCount(inbox);
-    setProjects(
-      projectRows.map((p) => ({
-        id: p.id, name: p.name, colour: p.colour,
-        createdAt: new Date(p.created_at), taskCount: counts[p.id] ?? 0,
-      }))
-    );
   }, []);
 
   useEffect(() => {
@@ -50,24 +57,52 @@ export default function Sidebar() {
   }, [loadProjects]);
 
   const createProject = async (name: string, colour: string) => {
-    await supabase.from('projects').insert([{ name, colour }]);
-    setShowModal(false);
-    loadProjects();
+    setProjectError(null);
+    try {
+      const { error } = await supabase.from('projects').insert([{ name, colour }]);
+      if (error) {
+        console.error('Failed to create project:', error);
+        setProjectError("Couldn't save project — please try again.");
+        return;
+      }
+      setShowModal(false);
+      loadProjects();
+    } catch (err) {
+      console.error('Unexpected error creating project:', err);
+      setProjectError("Couldn't save project — please try again.");
+    }
   };
 
   const renameProject = async (name: string, colour: string) => {
     if (!renaming) return;
-    await supabase.from('projects').update({ name, colour }).eq('id', renaming.id);
-    setRenaming(null);
-    loadProjects();
+    setProjectError(null);
+    try {
+      const { error } = await supabase.from('projects').update({ name, colour }).eq('id', renaming.id);
+      if (error) {
+        console.error('Failed to rename project:', error);
+        setProjectError("Couldn't save changes — please try again.");
+        return;
+      }
+      setRenaming(null);
+      loadProjects();
+    } catch (err) {
+      console.error('Unexpected error renaming project:', err);
+      setProjectError("Couldn't save changes — please try again.");
+    }
   };
 
   const deleteProject = async (project: SidebarProject) => {
     if (!confirm(`Delete "${project.name}"? Its tasks will move to Inbox.`)) return;
-    await supabase.from('tasks').update({ project_id: null }).eq('project_id', project.id);
-    await supabase.from('projects').delete().eq('id', project.id);
-    if (selectedProject === project.id) router.push('/');
-    loadProjects();
+    try {
+      const { error: moveErr } = await supabase.from('tasks').update({ project_id: null }).eq('project_id', project.id);
+      if (moveErr) { console.error('Failed to move tasks to Inbox:', moveErr); return; }
+      const { error: delErr } = await supabase.from('projects').delete().eq('id', project.id);
+      if (delErr) { console.error('Failed to delete project:', delErr); return; }
+      if (selectedProject === project.id) router.push('/');
+      loadProjects();
+    } catch (err) {
+      console.error('Unexpected error deleting project:', err);
+    }
   };
 
   const isTasksPage = pathname === '/';
@@ -161,7 +196,7 @@ export default function Sidebar() {
                   {/* Hover actions */}
                   <div className="absolute right-2 top-1.5 hidden gap-0.5 group-hover:flex">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setRenaming(p); }}
+                      onClick={(e) => { e.stopPropagation(); setProjectError(null); setRenaming(p); }}
                       className="rounded p-1 transition-colors hover:bg-[var(--bg-hover)]"
                       style={{ fontSize: 12, color: 'var(--text-muted)' }}
                       title="Rename"
@@ -178,7 +213,7 @@ export default function Sidebar() {
 
               {/* New project */}
               <button
-                onClick={() => setShowModal(true)}
+                onClick={() => { setProjectError(null); setShowModal(true); }}
                 className="mt-1 flex h-8 w-full items-center gap-1 rounded-lg px-3 text-xs transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ color: 'var(--text-muted)' }}
               >
@@ -194,12 +229,19 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {showModal && <ProjectModal onSave={createProject} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <ProjectModal
+          onSave={createProject}
+          onClose={() => setShowModal(false)}
+          error={projectError}
+        />
+      )}
       {renaming && (
         <ProjectModal
           initial={{ name: renaming.name, colour: renaming.colour }}
           onSave={renameProject}
           onClose={() => setRenaming(null)}
+          error={projectError}
         />
       )}
     </>

@@ -10,9 +10,10 @@ type Props = {
   initial?: { name: string; colour: string };
   onSave: (name: string, colour: string) => void;
   onClose: () => void;
+  error?: string | null;
 };
 
-export default function ProjectModal({ initial, onSave, onClose }: Props) {
+export default function ProjectModal({ initial, onSave, onClose, error }: Props) {
   const [name, setName] = useState(initial?.name ?? '');
   const [colour, setColour] = useState(initial?.colour ?? PRESET_COLOURS[0]);
 
@@ -42,7 +43,7 @@ export default function ProjectModal({ initial, onSave, onClose }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Project name"
-            className="mb-4 w-full rounded-lg px-3 py-2 text-sm outline-none transition-all"
+            className="mb-1 w-full rounded-lg px-3 py-2 text-sm outline-none transition-all"
             style={{ border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = 'var(--accent)';
@@ -53,6 +54,10 @@ export default function ProjectModal({ initial, onSave, onClose }: Props) {
               e.currentTarget.style.background = 'var(--bg-input)';
             }}
           />
+          {error && (
+            <p className="mb-3 text-xs" style={{ color: 'var(--p1)' }}>{error}</p>
+          )}
+          {!error && <div className="mb-3" />}
           {/* Colour swatches */}
           <div className="mb-5 flex gap-2">
             {PRESET_COLOURS.map((c) => (
