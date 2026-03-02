@@ -8,6 +8,7 @@ type Props = {
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onPriorityChange: (id: string, priority: 'p1' | 'p2' | 'p3') => void;
+  onOpen?: (id: string) => void;
 };
 
 function formatDate(date: Date): { text: string; overdue: boolean } {
@@ -148,7 +149,7 @@ function ContextMenu({ task, onDelete, onPriorityChange, onClose, style }: Conte
   );
 }
 
-export default function TaskItem({ task, onComplete, onDelete, onPriorityChange }: Props) {
+export default function TaskItem({ task, onComplete, onDelete, onPriorityChange, onOpen }: Props) {
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -202,7 +203,7 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange 
 
       {/* Checkbox */}
       <button
-        onClick={handleComplete}
+        onClick={(e) => { e.stopPropagation(); handleComplete(); }}
         style={{
           width: 20,
           height: 20,
@@ -222,7 +223,7 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange 
       />
 
       {/* Content */}
-      <div style={{ flex: 1, minWidth: 0, paddingLeft: 12 }}>
+      <div style={{ flex: 1, minWidth: 0, paddingLeft: 12, cursor: onOpen ? 'pointer' : 'default' }} onClick={() => onOpen?.(task.id)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {task.projectColour && (
             <span
@@ -279,7 +280,7 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange 
         {/* Priority flag */}
         {(task.priority === 'p1' || hovered) && (
           <button
-            onClick={() => onPriorityChange(task.id, NEXT_PRIORITY[task.priority])}
+            onClick={(e) => { e.stopPropagation(); onPriorityChange(task.id, NEXT_PRIORITY[task.priority]); }}
             title={`Priority: ${task.priority.toUpperCase()} — click to change`}
             style={{
               background: 'none',
@@ -302,6 +303,7 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange 
           <>
             {/* Edit (no-op visual) */}
             <button
+              onClick={(e) => { e.stopPropagation(); onOpen?.(task.id); }}
               style={{
                 background: 'none',
                 border: 'none',

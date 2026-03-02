@@ -60,21 +60,26 @@ export default function Sidebar() {
         });
       }
 
+      const inboxProjectId = projectRows.find((p: { name: string }) => p.name.toLowerCase() === 'inbox')?.id ?? null;
+
       const counts: Record<string, number> = {};
       let inbox = 0;
       let todayAmt = 0;
       for (const t of taskRows ?? []) {
         if (t.project_id) counts[t.project_id] = (counts[t.project_id] ?? 0) + 1;
-        else inbox++;
+        // Count as inbox: no project OR assigned to the Inbox project
+        if (!t.project_id || t.project_id === inboxProjectId) inbox++;
         if (t.scheduled_at && t.scheduled_at.startsWith(today)) todayAmt++;
       }
       setInboxCount(inbox);
       setTodayCount(todayAmt);
       setProjects(
-        projectRows.map((p) => ({
-          id: p.id, name: p.name, colour: p.colour,
-          createdAt: new Date(p.created_at), taskCount: counts[p.id] ?? 0,
-        }))
+        projectRows
+          .filter((p: { name: string }) => p.name.toLowerCase() !== 'inbox')
+          .map((p: { id: string; name: string; colour: string; created_at: string }) => ({
+            id: p.id, name: p.name, colour: p.colour,
+            createdAt: new Date(p.created_at), taskCount: counts[p.id] ?? 0,
+          }))
       );
     } catch (err) {
       console.error('Unexpected error loading projects:', err);
@@ -147,10 +152,13 @@ export default function Sidebar() {
 
   const isTasksPage = pathname === '/';
   const isHabitsPage = pathname === '/habits';
+  const isInboxPage = pathname === '/inbox';
 
   // Determine which nav item is active
   const activeNav = isHabitsPage
     ? 'habits'
+    : isInboxPage
+    ? 'inbox'
     : selectedProject
     ? 'project-' + selectedProject
     : isTasksPage
@@ -285,12 +293,12 @@ export default function Sidebar() {
 
         {/* Primary navigation */}
         <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1, marginTop: 8 }}>
-          {navBtn('search', <Search size={16} />, 'Search', () => {}, undefined)}
+          {navBtn('search', <Search size={16} />, 'Search', () => window.dispatchEvent(new Event('open-search')), undefined)}
           {navBtn(
             'inbox',
             <Inbox size={16} />,
             'Inbox',
-            () => router.push('/'),
+            () => router.push('/inbox'),
             inboxCount || undefined
           )}
           {navBtn(

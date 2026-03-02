@@ -48,6 +48,8 @@ These are moments where Claude Code cannot proceed without real information from
 | 17 | Bug Fixes & Full App Testing | [x] Done |
 | 18 | Todoist-Accurate Visual Redesign | [x] Done |
 | 19 | Bug Fixes, NL Parsing & Token Highlighting | [x] Done |
+| 20 | Inbox Fallback for Unassigned Tasks | [x] Done |
+| 21 | Inbox View, Task Detail, Habit Types, Search, Health Log, Calendars | [x] Done |
 
 ---
 
@@ -1741,4 +1743,368 @@ After implementing, update the build status table at the top of this file to sho
 
 ---
 
-*End of Build Plan — 19 Phases*
+## Phase 20 — Inbox Fallback for Unassigned Tasks
+**What this does:** Tasks added without a `#project` tag currently disappear from view. This fix ensures they always land in the Inbox project instead, where they can be found and categorised later.
+
+**Status:** [ ] Pending
+
+---
+
+### Steps for Claude Code
+
+1. **Find the task insert code** — wherever `parseTask()` output is used to build the Supabase insert payload (likely in `src/components/InlineTaskForm.tsx` or `src/app/page.tsx`)
+
+2. **Find the Inbox project ID** — before inserting, query Supabase for the project whose name is exactly `"Inbox"`:
+   ```ts
+   const { data: inbox } = await supabase
+     .from('projects')
+     .select('id')
+     .eq('name', 'Inbox')
+     .single()
+   ```
+
+3. **Apply the fallback** — if the parsed task has no `project_id` (i.e. the user typed no `#tag`, or the tag didn't match any project), set `project_id` to the Inbox project's ID:
+   ```ts
+   const projectId = parsedTask.projectId ?? inbox?.id ?? null
+   ```
+
+4. **Handle the edge case** — if no Inbox project exists in the database yet, create it automatically before inserting the task:
+   ```ts
+   if (!inbox) {
+     const { data: newInbox } = await supabase
+       .from('projects')
+       .insert({ name: 'Inbox', colour: '#808080' })
+       .select('id')
+       .single()
+     projectId = newInbox?.id ?? null
+   }
+   ```
+
+5. **Confirm Inbox appears in the sidebar** — the Inbox project should already be listed there. If it is not, check that it exists in the `projects` table in Supabase. If it is missing, insert it manually:
+   ```sql
+   insert into projects (name, colour) values ('Inbox', '#808080');
+   ```
+
+6. **Test:**
+   - Type `Buy milk` (no `#tag`) → task should appear under Inbox in the sidebar
+   - Type `#personal Call dentist` → task should appear under Personal, not Inbox
+   - Click Inbox in the sidebar → both untagged tasks should be visible there
+
+7. **Commit:** `git commit -m "fix: unassigned tasks fall back to Inbox instead of disappearing"`
+8. **Push to GitHub** and confirm Vercel deploys successfully
+
+### Success Criteria
+- Any task typed without a `#project` tag saves to Inbox and is immediately visible there
+- Tasks with a valid `#project` tag still go to the correct project
+- Inbox is visible in the sidebar and clicking it shows all unassigned tasks
+- No tasks disappear silently after being added
+
+---
+
+## Phase 21 — Feature Expansion: Inbox View, Task Detail, Habit Types, Search, Health Log & Calendar Redesign
+
+**What this does:** Implements six distinct improvements observed from user testing. Each section is self-contained — implement them in order and confirm each works before moving to the next.
+
+**Status:** [ ] Pending
+
+---
+
+### 21.1 — Inbox View: Full Task List with Sort Controls
+
+**Current behaviour:** Clicking Inbox in the sidebar navigates to the Today view instead of showing inbox tasks.
+
+**Required behaviour:** Inbox shows every task assigned to the Inbox project (regardless of date), as one long scrollable list. A sort selector lets the user change the order.
+
+**Steps:**
+1. Create `src/app/inbox/page.tsx` — a dedicated Inbox page that fetches all incomplete tasks where `project_id` matches the Inbox project
+2. Wire the Inbox sidebar link to navigate to `/inbox` instead of `/`
+3. Add a sort selector in the top-right of the Inbox page. Style it as a small dropdown (matching the view tabs on other pages). Options:
+   - **Priority** (default) — p1 first, then p2, then p3. Within each priority, sort by `created_at` ascending
+   - **Date** — tasks with a scheduled date first (earliest first), then undated tasks at the bottom
+   - **Date added** — `created_at` descending (newest first)
+   - **Alphabetical** — task name A→Z
+4. Persist the chosen sort to `localStorage` under the key `inbox-sort` so it's remembered between sessions
+5. Display tasks in the same row format as other views (checkbox, name, date metadata, priority flag, action icons on hover)
+6. Show a count below the page title: "X tasks"
+7. Empty state: "Your inbox is empty. Tasks without a project land here."
+
+---
+
+### 21.2 — Daily Health Log: Fix Persistence
+
+**Current behaviour:** Changing sleep hours, mood, and water values in the Daily Health Log doesn't save to Supabase — changes are lost on refresh.
+
+**Steps:**
+1. Find the Daily Health Log component and check the save logic. Most likely the `onChange` handler is updating local state but not calling a Supabase upsert
+2. Each field should upsert to the `health_logs` table on change (use a 500ms debounce to avoid hammering the database on every keystroke):
+   ```ts
+   await supabase
+     .from('health_logs')
+     .upsert({ logged_on: today, sleep_hours: value }, { onConflict: 'logged_on' })
+   ```
+3. On page load, fetch today's `health_logs` row and pre-fill all three fields with the saved values
+4. Add a subtle "Saved ✓" confirmation that appears briefly (1.5s) after each field saves, then fades out
+5. Test: enter sleep = 7, mood = 4, water = 2.0, refresh the page — all three values should still be there
+
+---
+
+### 21.3 — Habit Tracking Types
+
+**Current behaviour:** All habits are checkboxes only.
+
+**Required behaviour:** When creating a habit, the user can choose a tracking type. The habit then renders the appropriate input each day.
+
+**Database changes first** — run this SQL in Supabase:
+```sql
+alter table habits add column tracking_type text not null default 'checkbox';
+alter table habits add column unit text;
+alter table habits add column goal numeric;
+alter table habit_logs add column value numeric;
+alter table habit_logs add column text_value text;
+```
+
+**Tracking types to support** (these cover the most common real-world habit tracking use cases):
+
+| Type | Description | Daily input | Example habits |
+|---|---|---|---|
+| `checkbox` | Simple done/not done | Green checkbox (existing) | Meditate, Take vitamins, Read |
+| `count` | How many times | Number stepper (+/- buttons) | Pushups, Glasses of water, Pages read |
+| `duration` | How many minutes | Number input + "min" label | Exercise, Screen-free time, Sleep (alternative) |
+| `amount` | A measured quantity with custom unit | Number input + unit label | Calories, Steps, Weight (kg/lbs) |
+| `rating` | Score out of 10 | A row of 10 small clickable circles | Energy level, Focus, Stress |
+| `mood` | Emoji-based mood selection | 5 emoji buttons: 😞😐😊😄🤩 | Daily mood, Anxiety level |
+| `yesno` | Yes or No (more explicit than checkbox) | Two pill buttons: "Yes" / "No" | Took medication, No alcohol, Cold shower |
+
+**Habit creation modal changes:**
+- Add a "Tracking type" field below the habit name — a segmented selector or dropdown showing all 7 types with a short description of each
+- If type is `count`, `duration`, or `amount`: show an optional "Goal" number input and optional "Unit" text input (e.g. "calories", "steps", "kg")
+- Unit and goal are stored in the `habits` table
+
+**Daily checklist rendering:**
+- Each habit row renders its input type instead of always showing a checkbox
+- `checkbox` / `yesno` → existing checkbox or Yes/No pills
+- `count` → `[-] [number] [+]` stepper, shows goal if set (e.g. "8 / 10")
+- `duration` → number input with "min" suffix
+- `amount` → number input with the habit's unit suffix
+- `rating` → 10 small circles in a row, filled up to the selected number
+- `mood` → 5 emoji buttons, selected one is highlighted with a subtle background
+
+On any value change, upsert to `habit_logs` with both `value` (numeric) and `text_value` (for mood/yesno) for today's date. A `checkbox`/`yesno` completion is when `value = 1`.
+
+**Streak and calendar calculation update:**
+- A habit day counts as "completed" if: for checkbox/yesno → `value = 1`; for count/duration/amount → `value >= goal` (if goal set) or `value > 0` (if no goal); for rating/mood → any value logged
+- Update the streak and calendar colour logic in `src/lib/streaks.ts` to use this rule
+
+---
+
+### 21.4 — Search
+
+**Current behaviour:** Clicking Search in the sidebar does nothing.
+
+**Steps:**
+1. Clicking "Search" in the sidebar should open a full-screen search overlay (same pattern as many apps — a dark semi-transparent backdrop with a centred search input)
+2. The overlay contains:
+   - A search input at the top, auto-focused, with a magnifying glass icon and "Search tasks..." placeholder
+   - Results list below, updating live as the user types (after 2+ characters)
+   - An `×` button top-right to close, and pressing Escape also closes
+3. Search queries the `tasks` table in Supabase using `ilike`:
+   ```ts
+   supabase.from('tasks').select('*').ilike('name', `%${query}%`).eq('completed', false)
+   ```
+4. Each result shows: task name, project name (with `#` in project colour), and scheduled date if any
+5. Clicking a result closes the overlay and opens the task detail panel for that task (see 21.5)
+6. If no results: show "No tasks matching '[query]'" in `--text-muted`
+7. Wire the sidebar Search link to open this overlay
+
+---
+
+### 21.5 — Task Detail Panel
+
+**Current behaviour:** Clicking a task does nothing.
+
+**Required behaviour:** Clicking anywhere on a task row opens a slide-in panel from the right showing full task details, editable fields, sub-tasks, and comments.
+
+**Panel layout** (slides in from the right, ~400px wide, full height, with a subtle shadow on the left edge):
+
+```
+┌────────────────────────────────────────┐
+│  [×] Close                             │
+│                                        │
+│  ○ Task name (editable, click to edit) │
+│                                        │
+│  📅 Date     🚩 Priority  # Project    │
+│                                        │
+│  Description                           │
+│  ┌──────────────────────────────────┐  │
+│  │ Click to add a description...    │  │
+│  └──────────────────────────────────┘  │
+│                                        │
+│  Sub-tasks                             │
+│  ○ Sub-task 1                  [×]     │
+│  ○ Sub-task 2                  [×]     │
+│  + Add sub-task                        │
+│                                        │
+│  Comments                              │
+│  ┌──────────────────────────────────┐  │
+│  │ Add a comment...                 │  │
+│  └──────────────────────────────────┘  │
+│  [YA] Mon 2 Mar · "First comment"      │
+└────────────────────────────────────────┘
+```
+
+**Database changes — run this SQL:**
+```sql
+create table subtasks (
+  id uuid default gen_random_uuid() primary key,
+  task_id uuid references tasks(id) on delete cascade,
+  name text not null,
+  completed boolean default false,
+  sort_order integer default 0,
+  created_at timestamptz default now()
+);
+
+create table task_comments (
+  id uuid default gen_random_uuid() primary key,
+  task_id uuid references tasks(id) on delete cascade,
+  body text not null,
+  created_at timestamptz default now()
+);
+
+alter table tasks add column description text;
+```
+
+**Panel behaviour:**
+- Clicking a task row opens the panel. The main task list stays visible behind it (panel overlays the right portion)
+- Close with the `×` button or pressing Escape
+- Task name is editable inline — click to edit, Enter or blur to save (updates Supabase)
+- Description is a `<textarea>` that auto-expands — saves on blur with a "Saved ✓" confirmation
+- Sub-tasks: add with the `+ Add sub-task` input (Enter to save), check off to complete, `×` to delete
+- Comments: textarea at the top of the comments section, submit with Enter+Cmd or a Send button. Posted comments appear below in chronological order with a timestamp. Cannot be edited or deleted (keep it simple)
+- All changes save to Supabase immediately
+
+---
+
+### 21.6 — Habit Calendar: Full Screen & Visual Redesign
+
+**Current behaviour:** The calendar is a small grid at the top of the Habits page, sharing space with the habit checklist.
+
+**Required behaviour:** The Habits page has two tabs — **Today** (the daily checklist) and **Calendar** (the full-screen calendar). The Calendar tab takes the entire content area.
+
+**Tabs:**
+- Add two tabs at the top of the Habits page: "Today" and "Calendar"
+- "Today" tab shows the existing daily checklist and health log
+- "Calendar" tab shows the full-screen calendar view
+
+**Full-screen calendar redesign:**
+
+Layout: the calendar fills the full content area. Each day cell is much larger — tall enough to show meaningful content inside each cell.
+
+```
+          March 2026                    [◀] [▶]
+   Mon    Tue    Wed    Thu    Fri    Sat    Sun
+┌──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+│  23  │  24  │  25  │  26  │  27  │  28  │   1  │
+│      │      │      │      │      │      │      │
+│      │      │      │      │      │      │ grey │
+├──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+│   2  │   3  │  ... │      │      │      │      │
+│ 2/2  │      │      │      │      │      │      │
+│green │      │      │      │      │      │      │
+└──────┴──────┴──────┴──────┴──────┴──────┴──────┘
+```
+
+Each day cell:
+- **Size:** equal-width columns, rows sized to fill the available height (so the whole month fits without scrolling)
+- **Date number:** top-left corner, 13px, `--text-secondary`
+- **Completion fraction:** e.g. "2/3" in the centre of the cell, 12px, white if background is coloured
+- **Background colour:** the completion colour from the spec (green/light-green/amber/red/grey)
+- **Today's cell:** slightly bolder border (2px, `--accent`)
+- **Hover:** slight brightness increase, cursor pointer. On hover, show a tooltip listing which habits were completed that day
+- **Clicking a day:** shows a small popover with the list of habits and their logged values for that day
+
+**Colour thresholds** (unchanged from spec):
+- Green: 100% | Light green: 60–99% | Amber: 20–59% | Red: 1–19% | Grey: 0%
+
+**Month navigation:**
+- "◀" and "▶" arrows to move between months
+- Month name and year as a large heading above the grid (20px, 700)
+- A "Today" button next to the arrows that jumps back to the current month
+
+**Streak cards** (shown above the calendar on the Calendar tab):
+- Two side-by-side cards: "🔥 Current streak" and "🏆 Best streak"
+- Card style: white background, subtle shadow, rounded corners, 20px padding
+- Large number: 36px, 700, `--text-primary`. Label: 12px, `--text-muted`
+
+---
+
+### 21.7 — Upcoming View: Google Calendar-Style Week View
+
+**Current behaviour:** Upcoming shows a flat list of tasks for the next 7 days, grouped by day.
+
+**Required behaviour:** Upcoming shows a week-view calendar where scheduled tasks appear as coloured event blocks at their scheduled time, with height proportional to their duration — exactly like Google Calendar.
+
+**Layout:**
+
+```
+        Mon 2    Tue 3    Wed 4    Thu 5    Fri 6    Sat 7    Sun 8
+        ─────    ─────    ─────    ─────    ─────    ─────    ─────
+ 9am  │         │███████│         │         │         │         │
+      │         │Make   │         │         │         │         │
+10am  │         │app    │         │         │         │         │
+      │         │███████│         │         │         │         │
+11am  │         │       │         │███████  │         │         │
+12pm  │         │       │         │Call     │         │         │
+      │         │       │         │dentist  │         │         │
+```
+
+**Steps:**
+
+1. Replace the flat list in `src/app/upcoming/page.tsx` (or wherever the Upcoming view is rendered) with a 7-column week grid
+2. **Time axis** on the left: show hours from 7am to 10pm in 1-hour increments, 60px per hour
+3. **Day columns:** 7 equal-width columns for Mon–Sun of the current week. Column headers show the day name + date number. Today's column has a subtle `--accent` tinted header background
+4. **Week navigation:** "◀" and "▶" buttons to move one week forward/back. A "This week" button to jump back to the current week
+5. **Task event blocks:** for each task with a scheduled date+time that falls in the visible week:
+   - Position vertically based on scheduled time (e.g. 9:00am = 120px from top of 7am axis)
+   - Height based on duration (e.g. 60 min = 60px, 30 min = 30px). Minimum height: 28px (for tasks with no duration or very short duration)
+   - Width: fills the column minus 8px padding each side
+   - Background: the project's colour at 20% opacity. Border-left: 3px solid the project's full colour
+   - Content inside: task name (truncated if needed), duration below in smaller text (e.g. "1 hr")
+   - Priority indicator: small coloured dot top-right of the event block
+   - On hover: slightly elevated shadow, cursor pointer
+   - On click: opens the task detail panel (from 21.5)
+6. **Tasks without a time** (have a date but no time): shown in a small "all-day" row at the top of the relevant day column, as a flat pill rather than a timed block
+7. **Tasks with no date at all:** not shown in this view (they're in Backlog)
+8. **Current time indicator:** a horizontal red line across all columns at the current time, auto-updating every minute (only shown on the current week)
+9. **Empty column:** if a day has no tasks, show nothing — just the empty grid lines
+
+**Success criteria for 21.7:**
+- Upcoming shows a 7-day week grid with a time axis
+- Scheduled tasks appear as coloured blocks at the correct time and with correct height for their duration
+- Clicking an event opens the task detail panel
+- Week navigation (◀/▶/This week) works correctly
+- The current time line is visible on the current week
+
+---
+
+### 21.8 — Deployment
+
+1. Run all SQL migrations from 21.3 and 21.5 in Supabase before testing
+2. Run `npm run build` locally — fix all TypeScript errors
+3. Test each feature in order: Inbox sort, health log persistence, habit types (create one of each), search overlay, task detail panel, calendar full-screen, upcoming week view
+4. Commit: `git commit -m "Phase 21 — inbox view, task detail, habit types, search, health log fix, calendar redesign, upcoming week view"`
+5. Push to GitHub, confirm Vercel deploys successfully
+6. Smoke-test on the live URL
+
+### Success Criteria
+- Inbox shows all unassigned tasks with working sort controls
+- Health log values persist after page refresh
+- All 7 habit tracking types can be created and logged
+- Search overlay opens, returns live results, closes on Escape
+- Clicking a task opens the detail panel with editable name, description, sub-tasks, and comments
+- Habits page has Today/Calendar tabs; Calendar tab is full-screen and visually rich
+- Upcoming shows a 7-day week grid with timed task event blocks and week navigation
+- All changes deploy successfully to Vercel
+
+---
+
+*End of Build Plan — 21 Phases*

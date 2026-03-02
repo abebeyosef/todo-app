@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import MainContent from '@/components/MainContent';
 import Providers from '@/components/Providers';
 import { ToastProvider } from '@/lib/toast';
+import GlobalOverlays from '@/components/GlobalOverlays';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body className="flex h-screen overflow-hidden">
         <Providers>
           <ToastProvider>
+            <GlobalOverlays />
             <Suspense>
               <Sidebar />
             </Suspense>

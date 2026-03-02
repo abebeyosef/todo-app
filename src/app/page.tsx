@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Task } from '@/types/task';
 import { Project } from '@/types/project';
 import TaskItem from '@/components/TaskItem';
 import InlineTaskForm from '@/components/InlineTaskForm';
+import TaskDetailPanel from '@/components/TaskDetailPanel';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/lib/toast';
 
@@ -61,6 +62,7 @@ type DbTask = {
   completed_at: string | null;
   created_at: string;
   google_event_id: string | null;
+  description: string | null;
   projects: { name: string; colour: string } | null;
 };
 
@@ -79,6 +81,7 @@ function dbToTask(row: DbTask): Task {
     completedAt: row.completed_at ? new Date(row.completed_at) : undefined,
     googleEventId: row.google_event_id ?? undefined,
     createdAt: new Date(row.created_at),
+    description: row.description ?? undefined,
   };
 }
 
@@ -121,12 +124,24 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [taskError, setTaskError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   // Listen for sidebar "Add task" button
   useEffect(() => {
     const handler = () => setFormOpen(true);
     window.addEventListener('open-task-form', handler);
     return () => window.removeEventListener('open-task-form', handler);
+  }, []);
+
+  // Listen for 'open-task-detail' custom event (from search overlay)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const taskId = (e as CustomEvent).detail?.taskId;
+      if (taskId) setSelectedTaskId(taskId);
+    };
+    window.addEventListener('open-task-detail', handler);
+    return () => window.removeEventListener('open-task-detail', handler);
   }, []);
 
   const loadData = useCallback(async () => {
@@ -163,10 +178,12 @@ export default function TasksPage() {
       if (accessToken && task.scheduledAt) {
         googleEventId = await calendarCreate(task, accessToken);
       }
+      const inboxProject = projects.find((p) => p.name.toLowerCase() === 'inbox');
+      const effectiveProjectId = task.projectId ?? matchedProject?.id ?? inboxProject?.id ?? null;
       const insertPayload: Record<string, unknown> = {
         name: task.name,
         project: task.project ?? null,
-        project_id: task.projectId ?? matchedProject?.id ?? null,
+        project_id: effectiveProjectId,
         scheduled_at: task.scheduledAt?.toISOString() ?? null,
         duration: task.duration ?? null,
         priority: task.priority,
@@ -255,6 +272,26 @@ export default function TasksPage() {
     }
   };
 
+  const updateTask = async (updated: Task) => {
+    try {
+      const { error } = await supabase.from('tasks').update({
+        name: updated.name,
+        description: updated.description ?? null,
+        completed: updated.completed,
+        completed_at: updated.completedAt?.toISOString() ?? null,
+      }).eq('id', updated.id);
+      if (error) { console.error('Failed to update task:', error); return; }
+      if (updated.completed) {
+        setTasks((prev) => prev.filter((t) => t.id !== updated.id).concat(updated));
+      } else {
+        setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      }
+      window.dispatchEvent(new Event('tasks-changed'));
+    } catch (err) {
+      console.error('Unexpected error updating task:', err);
+    }
+  };
+
   // ── Derived data ────────────────────────────────────────────────────────────
   const activeTasks = tasks.filter((t) => !t.completed);
 
@@ -275,6 +312,7 @@ export default function TasksPage() {
       onComplete={completeTask}
       onDelete={deleteTask}
       onPriorityChange={updatePriority}
+      onOpen={(id) => setSelectedTaskId(id)}
     />
   );
 
@@ -388,19 +426,98 @@ export default function TasksPage() {
     );
   }
 
-  // ── Upcoming view ──────────────────────────────────────────────────────────
+  // ── Upcoming view — 7-day week grid ────────────────────────────────────────
   function renderUpcoming() {
-    const upcoming = viewTasks
-      .filter((t) => t.scheduledAt && t.scheduledAt >= today && t.scheduledAt <= in7Days)
-      .sort((a, b) => (a.scheduledAt!.getTime() - b.scheduledAt!.getTime()) || byPriority(a, b));
+    const HOUR_HEIGHT = 60; // px per hour
+    const START_HOUR = 7;
+    const END_HOUR = 22;
 
-    const pageTitle = 'Upcoming';
+    function getWeekStart(offset: number): Date {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day; // Monday = 0
+      d.setDate(d.getDate() + diff + offset * 7);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    const weekStart = getWeekStart(weekOffset);
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      return d;
+    });
+
+    const totalGridHeight = (END_HOUR - START_HOUR + 1) * HOUR_HEIGHT;
+    const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+
+    // Current week check
+    const currentWeekStart = getWeekStart(0);
+    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
+
+    // Current time position
+    const now2 = new Date();
+    const currentTimeTop = (now2.getHours() - START_HOUR + now2.getMinutes() / 60) * HOUR_HEIGHT;
+    const showTimeLine = isCurrentWeek && now2.getHours() >= START_HOUR && now2.getHours() <= END_HOUR;
+
+    // Week label
+    const weekLabel = weekOffset === 0 ? 'This week' :
+      weekOffset === -1 ? 'Last week' :
+      weekOffset === 1 ? 'Next week' :
+      `${days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${days[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+
+    // Tasks for the week
+    const weekTasksAll = activeTasks.filter((t) => {
+      if (!t.scheduledAt) return false;
+      const d = t.scheduledAt;
+      return d >= days[0] && d < new Date(days[6].getTime() + 86400000);
+    });
+
+    // Timed tasks: has non-midnight time
+    const isTimedTask = (t: Task) => {
+      if (!t.scheduledAt) return false;
+      return t.scheduledAt.getHours() !== 0 || t.scheduledAt.getMinutes() !== 0;
+    };
+
+    // All-day: scheduled but time is midnight
+    const isAllDayTask = (t: Task) => t.scheduledAt && !isTimedTask(t);
+
+    const dayOfWeekIndex = (d: Date) => {
+      // Mon=0, Tue=1, ..., Sun=6
+      return (d.getDay() + 6) % 7;
+    };
+
+    const formatHour = (h: number) => {
+      if (h === 12) return '12pm';
+      if (h < 12) return `${h}am`;
+      return `${h - 12}pm`;
+    };
+
+    const todayStr2 = new Date().toISOString().slice(0, 10);
+
     return (
       <>
-        <div style={{ marginBottom: 24 }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            {pageTitle}
+            Upcoming
           </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => setWeekOffset((w) => w - 1)}
+              style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }}
+            >◀</button>
+            <button
+              onClick={() => setWeekOffset(0)}
+              style={{ background: weekOffset === 0 ? 'var(--accent)' : 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 14, color: weekOffset === 0 ? 'white' : 'var(--text-secondary)', fontWeight: weekOffset === 0 ? 600 : 400 }}
+            >
+              {weekLabel}
+            </button>
+            <button
+              onClick={() => setWeekOffset((w) => w + 1)}
+              style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }}
+            >▶</button>
+          </div>
         </div>
 
         {formOpen && (
@@ -409,34 +526,185 @@ export default function TasksPage() {
 
         {loading ? (
           <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading…</p>
-        ) : upcoming.length === 0 ? (
-          <>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Your next 7 days are clear.</p>
-            <AddTaskRow />
-          </>
         ) : (
-          (() => {
-            const groups = new Map<string, Task[]>();
-            for (const t of upcoming) {
-              const key = isoDate(t.scheduledAt!);
-              if (!groups.has(key)) groups.set(key, []);
-              groups.get(key)!.push(t);
-            }
-            return (
-              <div>
-                {Array.from(groups.entries()).map(([dateStr, group]) => (
-                  <div key={dateStr} style={{ marginBottom: 24 }}>
-                    <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
-                    <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-                      {formatDayHeader(new Date(dateStr + 'T12:00:00'))}
-                    </h2>
-                    {group.map(renderTask)}
+          <div style={{ overflowX: 'auto' }}>
+            {/* All-day row */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--divider)', marginBottom: 0 }}>
+              {/* Time axis space */}
+              <div style={{ width: 52, flexShrink: 0 }} />
+              {days.map((day, di) => {
+                const dayStr = day.toISOString().slice(0, 10);
+                const isToday = dayStr === todayStr2;
+                const allDayForDay = weekTasksAll.filter((t) => isAllDayTask(t) && dayOfWeekIndex(t.scheduledAt!) === di);
+                return (
+                  <div
+                    key={di}
+                    style={{
+                      flex: 1,
+                      minWidth: 80,
+                      padding: '6px 4px',
+                      borderLeft: di > 0 ? '1px solid var(--divider)' : undefined,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>
+                      {day.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase()}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 16,
+                        fontWeight: isToday ? 700 : 400,
+                        color: isToday ? 'white' : 'var(--text-primary)',
+                        background: isToday ? 'var(--accent)' : 'transparent',
+                        borderRadius: '50%',
+                        width: 28,
+                        height: 28,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 4px',
+                      }}
+                    >
+                      {day.getDate()}
+                    </div>
+                    {allDayForDay.map((t) => (
+                      <div
+                        key={t.id}
+                        onClick={() => setSelectedTaskId(t.id)}
+                        style={{
+                          background: (t.projectColour ?? 'var(--accent)') + '33',
+                          borderLeft: `3px solid ${t.projectColour ?? 'var(--accent)'}`,
+                          borderRadius: '0 4px 4px 0',
+                          padding: '2px 4px',
+                          fontSize: 11,
+                          color: 'var(--text-primary)',
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap',
+                          textOverflow: 'ellipsis',
+                          cursor: 'pointer',
+                          marginBottom: 2,
+                        }}
+                      >
+                        {t.name}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Time grid */}
+            <div style={{ display: 'flex', position: 'relative', overflowY: 'auto', maxHeight: 'calc(100vh - 240px)' }}>
+              {/* Time axis */}
+              <div style={{ width: 52, flexShrink: 0, position: 'relative', height: totalGridHeight }}>
+                {hours.map((h) => (
+                  <div
+                    key={h}
+                    style={{
+                      position: 'absolute',
+                      top: (h - START_HOUR) * HOUR_HEIGHT - 8,
+                      left: 0,
+                      width: '100%',
+                      fontSize: 11,
+                      color: 'var(--text-muted)',
+                      textAlign: 'right',
+                      paddingRight: 8,
+                    }}
+                  >
+                    {formatHour(h)}
                   </div>
                 ))}
-                <AddTaskRow />
               </div>
-            );
-          })()
+
+              {/* Day columns */}
+              <div style={{ flex: 1, display: 'flex', position: 'relative' }}>
+                {/* Current time line */}
+                {showTimeLine && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      top: currentTimeTop,
+                      height: 2,
+                      background: '#DB4035',
+                      zIndex: 20,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
+
+                {days.map((day, di) => {
+                  const timedForDay = weekTasksAll.filter((t) => isTimedTask(t) && dayOfWeekIndex(t.scheduledAt!) === di);
+                  return (
+                    <div
+                      key={di}
+                      style={{
+                        flex: 1,
+                        minWidth: 80,
+                        position: 'relative',
+                        height: totalGridHeight,
+                        borderLeft: '1px solid var(--divider)',
+                      }}
+                    >
+                      {/* Hour grid lines */}
+                      {hours.map((h) => (
+                        <div
+                          key={h}
+                          style={{
+                            position: 'absolute',
+                            top: (h - START_HOUR) * HOUR_HEIGHT,
+                            left: 0,
+                            right: 0,
+                            height: 1,
+                            background: 'var(--divider)',
+                            opacity: 0.5,
+                          }}
+                        />
+                      ))}
+
+                      {/* Timed task blocks */}
+                      {timedForDay.map((t) => {
+                        const h = t.scheduledAt!.getHours();
+                        const m = t.scheduledAt!.getMinutes();
+                        const top = (h - START_HOUR + m / 60) * HOUR_HEIGHT;
+                        const height = Math.max(((t.duration ?? 30) / 60) * HOUR_HEIGHT, 28);
+                        const colour = t.projectColour ?? 'var(--accent)';
+                        return (
+                          <div
+                            key={t.id}
+                            onClick={() => setSelectedTaskId(t.id)}
+                            title={t.name}
+                            style={{
+                              position: 'absolute',
+                              top,
+                              left: 2,
+                              right: 2,
+                              height,
+                              background: colour + '33',
+                              borderLeft: `3px solid ${colour}`,
+                              borderRadius: '0 4px 4px 0',
+                              padding: '2px 5px',
+                              cursor: 'pointer',
+                              overflow: 'hidden',
+                              zIndex: 10,
+                            }}
+                          >
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                              {t.name}
+                            </div>
+                            {t.duration && (
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.duration} min</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         )}
       </>
     );
@@ -554,7 +822,8 @@ export default function TasksPage() {
 
   // ── Inbox view (no project filter, show all without project) ───────────────
   function renderInbox() {
-    const inbox = activeTasks.filter((t) => !t.projectId);
+    const inboxProject = projects.find((p) => p.name.toLowerCase() === 'inbox');
+    const inbox = activeTasks.filter((t) => !t.projectId || t.projectId === inboxProject?.id);
     return (
       <>
         <div style={{ marginBottom: 24 }}>
@@ -583,13 +852,28 @@ export default function TasksPage() {
   }
 
   // ── Route to correct view ──────────────────────────────────────────────────
-  if (selectedProjectId) return renderByProject();
-
-  switch (viewParam) {
-    case 'upcoming':   return renderUpcoming();
-    case 'by-project': return renderByProject();
-    case 'backlog':    return renderBacklog();
-    case 'inbox':      return renderInbox();
-    default:           return renderToday();
+  let content: React.ReactNode;
+  if (selectedProjectId) {
+    content = renderByProject();
+  } else {
+    switch (viewParam) {
+      case 'upcoming':   content = renderUpcoming(); break;
+      case 'by-project': content = renderByProject(); break;
+      case 'backlog':    content = renderBacklog(); break;
+      case 'inbox':      content = renderInbox(); break;
+      default:           content = renderToday();
+    }
   }
+
+  return (
+    <>
+      {content}
+      <TaskDetailPanel
+        task={tasks.find((t) => t.id === selectedTaskId) ?? null}
+        onClose={() => setSelectedTaskId(null)}
+        onTaskUpdate={updateTask}
+        onTaskDelete={deleteTask}
+      />
+    </>
+  );
 }

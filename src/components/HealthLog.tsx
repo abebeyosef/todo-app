@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
 type HealthData = {
@@ -21,6 +21,9 @@ export default function HealthLog() {
   const today = new Date().toISOString().slice(0, 10);
   const [data, setData] = useState<HealthData>({ sleep_hours: null, mood_score: null, water_litres: null });
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     supabase
@@ -31,12 +34,23 @@ export default function HealthLog() {
       .then(({ data: row }) => { if (row) setData(row as HealthData); });
   }, [today]);
 
-  const save = async (update: Partial<HealthData>) => {
-    const merged = { ...data, ...update };
-    setData(merged);
+  const scheduleUpsert = (merged: HealthData) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setSaving(true);
-    await supabase.from('health_logs').upsert({ logged_on: today, ...merged }, { onConflict: 'logged_on' });
-    setSaving(false);
+    setSaved(false);
+    debounceRef.current = setTimeout(async () => {
+      await supabase.from('health_logs').upsert({ logged_on: today, ...merged }, { onConflict: 'logged_on' });
+      setSaving(false);
+      setSaved(true);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaved(false), 1500);
+    }, 500);
+  };
+
+  const handleChange = (update: Partial<HealthData>) => {
+    const merged = { ...data, ...update };
+    setData(merged); // optimistic update
+    scheduleUpsert(merged);
   };
 
   return (
@@ -46,7 +60,11 @@ export default function HealthLog() {
     >
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Daily Health Log</h2>
-        {saving && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Saving…</span>}
+        {saved ? (
+          <span style={{ fontSize: 12, color: '#16a34a' }}>Saved ✓</span>
+        ) : saving ? (
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Saving…</span>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-5">
@@ -58,7 +76,7 @@ export default function HealthLog() {
               type="number"
               min={0} max={24} step={0.5}
               value={data.sleep_hours ?? ''}
-              onChange={(e) => save({ sleep_hours: e.target.value ? parseFloat(e.target.value) : null })}
+              onChange={(e) => handleChange({ sleep_hours: e.target.value ? parseFloat(e.target.value) : null })}
               placeholder="0"
               className="w-20 rounded-lg px-3 py-1.5 text-right text-sm outline-none transition-all"
               style={{ border: '1.5px solid var(--border)', background: 'var(--bg-modal)', color: 'var(--text-primary)' }}
@@ -76,7 +94,7 @@ export default function HealthLog() {
             {MOODS.map(({ value, label }) => (
               <button
                 key={value}
-                onClick={() => save({ mood_score: data.mood_score === value ? null : value })}
+                onClick={() => handleChange({ mood_score: data.mood_score === value ? null : value })}
                 className="rounded-lg px-2 py-1 text-lg transition-all focus:outline-none"
                 style={{
                   transform: data.mood_score === value ? 'scale(1.1)' : undefined,
@@ -100,7 +118,7 @@ export default function HealthLog() {
               type="number"
               min={0} max={10} step={0.25}
               value={data.water_litres ?? ''}
-              onChange={(e) => save({ water_litres: e.target.value ? parseFloat(e.target.value) : null })}
+              onChange={(e) => handleChange({ water_litres: e.target.value ? parseFloat(e.target.value) : null })}
               placeholder="0"
               className="w-20 rounded-lg px-3 py-1.5 text-right text-sm outline-none transition-all"
               style={{ border: '1.5px solid var(--border)', background: 'var(--bg-modal)', color: 'var(--text-primary)' }}

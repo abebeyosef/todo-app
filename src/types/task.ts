@@ -12,4 +12,5 @@ export type Task = {
   isBacklog: boolean;
   completedAt?: Date;
   googleEventId?: string;
+  description?: string;
 };
