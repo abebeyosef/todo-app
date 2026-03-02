@@ -44,9 +44,21 @@ export default function Sidebar() {
         supabase.from('projects').select('*').order('created_at'),
         supabase.from('tasks').select('project_id, scheduled_at').eq('completed', false),
       ]);
-      if (pErr) { console.error('Failed to load projects:', pErr); return; }
-      if (tErr) { console.error('Failed to load task counts:', tErr); return; }
+
+      if (pErr) {
+        console.error('Failed to load projects:', {
+          message: pErr.message, code: pErr.code, details: pErr.details, hint: pErr.hint,
+        });
+        return;
+      }
       if (!projectRows) return;
+
+      // tErr is non-fatal: task counts fall back to 0 rather than blocking the project list
+      if (tErr) {
+        console.error('Failed to load task counts (non-fatal):', {
+          message: tErr.message, code: tErr.code, details: tErr.details, hint: tErr.hint,
+        });
+      }
 
       const counts: Record<string, number> = {};
       let inbox = 0;
@@ -80,8 +92,15 @@ export default function Sidebar() {
     try {
       const { error } = await supabase.from('projects').insert([{ name, colour }]);
       if (error) {
-        console.error('Failed to create project:', error);
-        setProjectError("Couldn't save project — please try again.");
+        console.error('Failed to create project — full error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          payload: { name, colour },
+        });
+        // Surface the actual Supabase message so the user can see it without devtools
+        setProjectError(`Couldn't save project: ${error.message}`);
         return;
       }
       setShowModal(false);
@@ -98,8 +117,10 @@ export default function Sidebar() {
     try {
       const { error } = await supabase.from('projects').update({ name, colour }).eq('id', renaming.id);
       if (error) {
-        console.error('Failed to rename project:', error);
-        setProjectError("Couldn't save changes — please try again.");
+        console.error('Failed to rename project — full error:', {
+          message: error.message, code: error.code, details: error.details, hint: error.hint,
+        });
+        setProjectError(`Couldn't save changes: ${error.message}`);
         return;
       }
       setRenaming(null);
