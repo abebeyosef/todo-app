@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 1 March 2026
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 2 March 2026
 
 ---
 
@@ -47,38 +47,42 @@ These are moments where Claude Code cannot proceed without real information from
 | 16 | UI Design Polish | [x] Done |
 | 17 | Bug Fixes & Full App Testing | [x] Done |
 | 18 | Todoist-Accurate Visual Redesign | [x] Done |
-| 19 | Bug Fixes, NL Parsing & Token Highlighting | [ ] Pending |
+| 19 | Bug Fixes, NL Parsing & Token Highlighting | [x] Done |
 
 ---
 
 ## Project Health Summary
 
-### ✅ Confirmed Working (code-verified)
+### ✅ Confirmed Working (code-verified, as of Phase 19)
 - All Supabase CRUD for tasks, projects, habits, habit_logs, health_logs
-- Natural language task input — chrono-node parses project tags, dates, duration, priority
-- Four task views (Today / Upcoming / By Project / Backlog) with localStorage persistence
-- Priority dot system — p1/p2/p3 cycling, Supabase update, p1 always visible
-- Project sidebar with live task counts via custom `tasks-changed` window event
-- Collapsible Completed and Low-priority sections
-- Habit daily checklist (green checkbox, resets at midnight), drag-and-drop reorder
+- Natural language task input — chrono-node parses project tags, dates/times (12:00, 9am, 2:30pm), duration, priority; backlog keywords (someday, eventually, one day) stripped from task name
+- Five task views (Today / Upcoming / By Project / Backlog / Inbox) with URL-based routing (`?view=`)
+- Priority flag system (p1/p2/p3) — Lucide Flag icons in toolbar dropdown + context menu, Supabase update, p1 always visible in task row
+- Project sidebar with live task counts via `tasks-changed` window event; `#` project symbols in project colour; amber active fill; no left border indicator
+- Habit daily checklist (green checkbox), drag-and-drop reorder via @hello-pangea/dnd
 - Monthly habit calendar with colour-coded completion cells and hover tooltips
 - Streak calculation (current and best) in `src/lib/streaks.ts`
 - Health log (sleep/mood/water) with upsert on today's date
-- Google Calendar sync — create/update (✓ prefix on complete)/delete via server-side API route
+- Google Calendar sync — create/update/delete via server-side `/api/calendar/route.ts`
 - Vercel cron job (`vercel.json`) — cleanup runs at 2am UTC daily
-- Error handling — all Supabase mutations have try/catch + console.error + UI error messages
+- Toast system (`src/lib/toast.tsx`) — dark bottom-left toasts, 5s dismiss, Undo action
+- Inline token highlighting (`src/lib/highlightTask.ts`) — mirror div behind transparent input highlights `#project`, date/time, `[duration]`, `p1/p2/p3` as coloured spans while typing
+- Parsed preview line below task input — updates live with detected tokens
+- Task INSERT: detailed error logging (code/message/details/hint); `google_event_id` conditional (only sent if non-null, avoiding failures when Phase 13 column wasn't migrated)
+- Error message in InlineTaskForm clears on form remount and on first keystroke after a failure
 
 ### ⚠️ Known Issues
-- **Google OAuth token expiry:** access tokens expire after ~1 hour. No automatic refresh is implemented (`refreshToken` is stored in the JWT but never used). Calendar sync silently stops working until the user reconnects manually.
-- **Cleanup cron and Supabase RLS:** the cleanup API route uses the public anon key. If Row Level Security is enabled on the tasks table without a service-role bypass, the cron job will silently delete 0 rows.
-- **Dead code:** `src/lib/googleCalendar.ts` exists but is never called from client code. All calendar calls go through `/api/calendar/route.ts`. The file is safe to delete.
-- **Vercel deployment of Phase 16–17 unconfirmed:** user reported the live URL appeared unchanged after the latest push. Root cause not yet established (pending deployment, failed build, or browser cache).
+- **Google OAuth token expiry:** access tokens expire after ~1 hour. No automatic refresh implemented (`refreshToken` stored in JWT but unused). Calendar sync silently stops until user reconnects manually.
+- **Cleanup cron and Supabase RLS:** cleanup API route uses the public anon key. If RLS is enabled on the tasks table without a service-role bypass, the cron job silently deletes 0 rows.
+- **Dead code:** `src/lib/googleCalendar.ts` exists but is never called (all calendar calls go through `/api/calendar/route.ts`). Safe to delete.
+- **Deadline button in InlineTaskForm:** clicking toggles today at 9:00am only — no date picker UI. The button is a placeholder; full date picker not yet implemented.
+- **Reminders button:** renders with Bell icon but is non-functional (placeholder for a future phase).
 
 ### 🔲 Still Needs Attention
-- Verify Vercel has successfully deployed the Phase 16 and 17 commits (check Vercel dashboard → Deployments)
-- Run the full manual test suite from Phase 17 (T1–T16, P1–P5, H1–H8, G1–G4) in a real browser
-- Decide whether to implement OAuth token refresh or add a clear "reconnect" prompt when the token is near expiry
-- Remove dead file `src/lib/googleCalendar.ts` if confirmed unused
+- Decide whether to implement OAuth token refresh or add a clear "Reconnect" prompt when the token is near expiry
+- Remove dead file `src/lib/googleCalendar.ts`
+- Add a proper date picker to the Deadline button in InlineTaskForm
+- Implement Reminders functionality
 
 ---
 
@@ -1557,6 +1561,16 @@ Implement in this exact order to avoid breaking changes mid-way:
 **What this does:** Fixes three confirmed bugs from screen recording review, improves the natural language parser to correctly detect time and duration, and adds Todoist-style inline token highlighting inside the task input field so detected values are visually highlighted as you type.
 
 **Status:** [x] Done
+
+**Completion Notes:**
+- **Bug 19.0.1 (task INSERT failure):** root cause was `google_event_id` being sent unconditionally in the INSERT payload — if the Phase 13 `ALTER TABLE` was never run in the actual Supabase project, every insert failed with a "column does not exist" error. Fixed by building the payload as a `Record<string, unknown>` and only spreading in `google_event_id` when it is non-null. Also improved error logging to `console.error('Task insert failed:', error.code, error.message, error.details, error.hint)` for future debugging.
+- **Bug 19.0.2 (toolbar icons = triangles):** `InlineTaskForm.tsx` toolbar was using emoji characters (📅, 🚩) which rendered as orange/red play-button triangles in some environments. Replaced with Lucide React components: `CalendarClock` (Deadline), `Flag` (Priority), `Bell` (Reminders). Redesigned toolbar: single Priority button opens a small positioned dropdown with P1/P2/P3 options (each styled in their priority colour), replaced 3 separate flag buttons. Outside-click listener via `useEffect` + `priorityMenuRef` closes the dropdown.
+- **Bug 19.0.3 (stale error persists on form reopen):** `error` prop was passed directly from parent `taskError` state into `InlineTaskForm`. On form remount, the stale error value was passed in immediately and shown. Fixed with a `mountedRef` guard: the component ignores the initial `error` prop value on mount, and only displays errors that arrive via subsequent prop changes (i.e. from a failed submit after the form is open). Additionally clears `localError` on the first keystroke after an error.
+- **Phase 19.1 (NL parser):** added "someday", "eventually", "one day" as backlog keyword stripping — they are removed from the raw string before the name is finalised, so "#personal Call dentist someday" produces name "Call dentist" not "Call dentist someday". Confirmed all five test cases in the updated comment block. Chrono-node was already correctly handling combined date+time (e.g. "tomorrow 12:00", "friday 2:30pm") — no logic change needed there.
+- **Phase 19.2 (inline token highlighting):** created `src/lib/highlightTask.ts` (new file). `buildHighlightedHTML(text, projectNames)` runs regex detection for `#project`, `[duration]`, `p1/p2/p3` and chrono-node for date/time ranges, sorts and de-overlaps them, and builds an HTML string with inline-styled `<span>` elements. `InlineTaskForm.tsx` renders a mirror `<div>` (absolute, `pointer-events: none`) behind a transparent `<input>` using identical font/size/line-height. When `name` has content, the input's `color` is set to `transparent` so the mirror shows through; `caretColor` remains visible. Added a parsed preview line below the input — "→ App · Tomorrow 12:00 · 60 min · Priority 1" — built from `formatPreview()` which calls `parseTask()` live on each keystroke.
+- Files created/modified: `src/lib/highlightTask.ts` (new), `src/lib/parseTask.ts`, `src/components/InlineTaskForm.tsx`, `src/app/page.tsx`, `docs/BUILD_PLAN.md`.
+- Build: `next build` passed with zero TypeScript errors. Commit: 370602b.
+- **Success criteria met:** tasks save; time/duration parsed correctly in all 5 test cases; token highlighting colours appear live as you type; preview line shows detected tokens; toolbar shows CalendarClock/Flag/Bell icons; error message clears on reopen and on first keystroke.
 
 **Implement in this exact order — do not skip ahead.**
 
