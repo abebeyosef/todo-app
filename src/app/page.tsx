@@ -163,23 +163,26 @@ export default function TasksPage() {
       if (accessToken && task.scheduledAt) {
         googleEventId = await calendarCreate(task, accessToken);
       }
+      const insertPayload: Record<string, unknown> = {
+        name: task.name,
+        project: task.project ?? null,
+        project_id: task.projectId ?? matchedProject?.id ?? null,
+        scheduled_at: task.scheduledAt?.toISOString() ?? null,
+        duration: task.duration ?? null,
+        priority: task.priority,
+        is_backlog: task.isBacklog,
+        completed: false,
+      };
+      // Only include google_event_id if the column exists (Phase 13 migration may not have run)
+      if (googleEventId) insertPayload.google_event_id = googleEventId;
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert([{
-          name: task.name,
-          project: task.project ?? null,
-          project_id: task.projectId ?? matchedProject?.id ?? null,
-          scheduled_at: task.scheduledAt?.toISOString() ?? null,
-          duration: task.duration ?? null,
-          priority: task.priority,
-          is_backlog: task.isBacklog,
-          completed: false,
-          google_event_id: googleEventId,
-        }])
+        .insert([insertPayload])
         .select('*, projects(name, colour)')
         .single();
       if (error) {
-        console.error('Failed to insert task:', error);
+        console.error('Task insert failed:', error.code, error.message, error.details, error.hint);
         setTaskError("Couldn't save task — please try again.");
         return;
       }

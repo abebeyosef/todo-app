@@ -47,6 +47,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 16 | UI Design Polish | [x] Done |
 | 17 | Bug Fixes & Full App Testing | [x] Done |
 | 18 | Todoist-Accurate Visual Redesign | [x] Done |
+| 19 | Bug Fixes, NL Parsing & Token Highlighting | [ ] Pending |
 
 ---
 
@@ -1552,4 +1553,178 @@ Implement in this exact order to avoid breaking changes mid-way:
 
 ---
 
-*End of Build Plan — 18 Phases*
+## Phase 19 — Bug Fixes, NL Parsing Improvements & Inline Token Highlighting
+**What this does:** Fixes three confirmed bugs from screen recording review, improves the natural language parser to correctly detect time and duration, and adds Todoist-style inline token highlighting inside the task input field so detected values are visually highlighted as you type.
+
+**Status:** [x] Done
+
+**Implement in this exact order — do not skip ahead.**
+
+---
+
+### 19.0 — Critical Bug Fixes (Fix These First)
+
+**Bug 1 — Tasks won't save**
+This is the most important fix. Tasks fail to insert with "Couldn't save task — please try again."
+
+Steps:
+1. Find the Supabase task insert code and update the catch block to log the full error:
+   ```ts
+   console.error('Task insert failed:', error.code, error.message, error.details, error.hint)
+   ```
+2. Open the Supabase dashboard → Table Editor → `tasks` table and write down every column that exists there
+3. Compare this exactly against every field the code is trying to insert. Fix any mismatch — including wrong column names, missing columns, or columns the table doesn't have
+4. Specifically check:
+   - Is `project_id` being sent as a valid UUID that exists in the `projects` table? Or is it sending a name string instead of a UUID?
+   - Are any NOT NULL columns missing values in the insert?
+   - Is there a column called `color` when the table has `colour` (or vice versa)?
+   - Does the `priority` column expect `'p1'`/`'p2'`/`'p3'` strings, or integers like `1`/`2`/`3`?
+5. Fix the root cause. Do not just suppress the error — actually fix what's wrong with the insert
+6. Test: type `Buy milk` and press Add task. Task should appear in the list immediately
+
+**Bug 2 — Toolbar icons showing as triangles**
+The Deadline, Priority, and Reminders buttons in the task input form are rendering as orange/red play button triangles (▶) instead of proper icons.
+
+Steps:
+1. Find where these three buttons are rendered in the task input component
+2. Check the Lucide icon imports — they are likely using icon names that don't exist in the installed version of lucide-react
+3. Replace with these confirmed valid Lucide icon names:
+   - Deadline → `CalendarClock`
+   - Priority → `Flag`
+   - Reminders → `Bell`
+4. Confirm all three render as proper icons, not triangles or fallback symbols
+
+**Bug 3 — Error message persists between form opens**
+"Couldn't save task" stays visible even after closing and reopening the task form.
+
+Steps:
+1. Find the error state variable in the task input component
+2. Add `setError(null)` in two places: (a) when the form is opened/expanded, (b) when the user starts typing (on the first keystroke after an error)
+3. This ensures the form always starts clean
+
+---
+
+### 19.1 — Fix NL Parser: Time and Duration Detection
+
+Currently the parser detects date words like "tomorrow" but misses the time ("12:00") and duration ("[1hr]"). Fix `src/lib/parseTask.ts` to handle all of the following correctly.
+
+**Time detection** (must work alongside date detection):
+- `12:00`, `9:00`, `14:30` → 24-hour format
+- `1pm`, `9am`, `2:30pm`, `noon`, `midnight` → 12-hour format
+- Must combine with date: `tomorrow 12:00` → tomorrow at 12:00. `monday 9am` → next Monday at 9am
+- Use `chrono-node` for this — it handles combined date+time strings natively. Make sure the full string including time is passed to `chrono.parseDate()`, not just the date word
+
+**Duration detection** (bracket format):
+- `[1hr]`, `[2hr]`, `[30min]`, `[45min]`, `[1.5hr]`, `[90min]`
+- Extract the number and unit, convert everything to minutes: `[1hr]` → 60, `[30min]` → 30, `[1.5hr]` → 90
+- After extracting duration, remove the `[...]` token from the remaining string so it doesn't become part of the task name
+- Store as `duration: number` (in minutes) on the parsed task object
+
+**Test these exact inputs and confirm they all parse correctly:**
+
+| Input | Expected output |
+|---|---|
+| `#app make an app tomorrow 12:00 [1hr]` | project: App, name: "make an app", date: tomorrow 12:00, duration: 60min |
+| `#health Morning run today 7am [45min]` | project: Health, name: "Morning run", date: today 07:00, duration: 45min |
+| `#work Call with client friday 2:30pm [30min] p1` | project: Work, name: "Call with client", date: Friday 14:30, duration: 30min, priority: p1 |
+| `Buy milk` | project: Inbox, name: "Buy milk", no date, no duration, priority: p2 |
+| `#personal Call dentist someday` | project: Personal, name: "Call dentist", backlog: true, no date |
+
+Write these five test cases as a comment block at the top of `parseTask.ts` and verify each one manually before moving on.
+
+---
+
+### 19.2 — Inline Token Highlighting in the Task Input
+
+**What this looks like:** As the user types, detected tokens are highlighted with coloured backgrounds directly inside the input field — exactly like Todoist. For example, typing `#app make an app tomorrow 12:00 [1hr] p1` shows:
+
+```
+[#app] make an app [tomorrow 12:00] [1hr] [p1]
+  ↑ amber pill    ↑ blue pill      ↑ grey ↑ red
+```
+
+**Implementation — use a mirror div behind a transparent textarea:**
+
+Replace the plain task name `<input>` with this two-layer structure:
+
+```tsx
+<div style={{ position: 'relative', width: '100%' }}>
+  {/* Layer 1 — behind — renders highlighted HTML */}
+  <div
+    className="highlight-mirror"
+    aria-hidden="true"
+    dangerouslySetInnerHTML={{ __html: buildHighlightedHTML(inputValue) }}
+  />
+  {/* Layer 2 — on top — user types here, text is invisible */}
+  <textarea
+    value={inputValue}
+    onChange={e => setInputValue(e.target.value)}
+    style={{ background: 'transparent', color: 'transparent', caretColor: 'var(--text-primary)' }}
+  />
+</div>
+```
+
+Both layers must have **identical** CSS: same font-family, font-size, font-weight, line-height, letter-spacing, padding, margin, width, and `white-space: pre-wrap`. If these differ by even 1px, the highlights will be misaligned with the text.
+
+The mirror div must have `pointer-events: none` so clicks pass through to the textarea.
+
+**`buildHighlightedHTML(text)` function:**
+
+This function takes the raw input string and returns an HTML string with detected tokens wrapped in `<mark>` spans. It must:
+
+1. Run the NL parser on the current input to detect all tokens and their positions in the string
+2. For each detected token, record its start index, end index, and type
+3. Sort tokens by start index
+4. Build the output string by iterating through the original text and wrapping detected ranges in styled spans
+
+Token highlight styles:
+
+| Token type | Background | Text colour | Border-radius |
+|---|---|---|---|
+| `#project` | `#FFEED9` | `#B45309` | 4px |
+| Date + time | `#E8F4FD` | `#1D6FA4` | 4px |
+| `[duration]` | `#F0F0F0` | `#555555` | 4px |
+| `p1` | `#FDECEA` | `#DB4035` | 4px |
+| `p2` | `#FFF3E0` | `#D97706` | 4px |
+| `p3` | `#F5F5F5` | `#888888` | 4px |
+
+Only highlight the `#project` token if it matches an existing project name. Everything else (the task name text) stays unstyled.
+
+**Parsed preview line:**
+
+Directly below the input wrapper (outside the mirror), show a small live preview in `--text-muted`, 12px, that only appears when at least one token has been detected:
+
+```
+→ App · Tomorrow 12:00 · 60 min · Priority 1
+```
+
+This updates on every keystroke and gives the user confidence the parser understood their input. Hide it when the input is empty or no tokens are found.
+
+---
+
+### 19.3 — Build Status Table Update
+
+After implementing, update the build status table at the top of this file to show Phase 19 as `[x] Done`.
+
+### 19.4 — Deployment
+
+1. Run `npm run build` locally — fix any TypeScript errors before committing
+2. Test on localhost with all five NL test cases from section 19.1
+3. Test token highlighting — each token type should light up as you type
+4. Confirm tasks save and appear in the list
+5. Commit: `git commit -m "Phase 19 — bug fixes, NL parsing improvements, inline token highlighting"`
+6. Push to GitHub and confirm Vercel deploys successfully
+7. Test on the live Vercel URL — add a task with all token types, confirm it saves and highlights correctly
+
+### Success Criteria
+- Adding a task saves to Supabase and appears in the list immediately
+- Time (12:00, 9am, 2:30pm) and duration ([1hr], [45min]) are correctly parsed and stored
+- All five test cases in 19.1 produce the correct output
+- Typed tokens are highlighted inline with coloured backgrounds as the user types
+- The parsed preview line appears below the input when tokens are detected
+- Toolbar icons show correctly (Flag, CalendarClock, Bell) — not triangles
+- Error message clears when the form is opened or when the user starts typing
+
+---
+
+*End of Build Plan — 19 Phases*

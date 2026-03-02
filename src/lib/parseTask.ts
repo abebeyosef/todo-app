@@ -1,15 +1,22 @@
 /**
  * parseTask — Natural language task input parser
  *
- * Test inputs:
- *   "#app Make a new app tomorrow 1pm [2hr] p1"
- *     → project: "app", name: "Make a new app", scheduledAt: tomorrow 13:00, duration: 120, priority: "p1"
+ * Test cases (all must produce the correct output):
  *
- *   "#health Morning run today 7am [45min]"
- *     → project: "health", name: "Morning run", scheduledAt: today 07:00, duration: 45, priority: "p2"
+ * 1. "#app make an app tomorrow 12:00 [1hr]"
+ *    → project: "app", name: "make an app", date: tomorrow 12:00, duration: 60min, priority: p2
  *
- *   "#personal Call dentist someday"
- *     → project: "personal", name: "Call dentist someday", scheduledAt: undefined, priority: "p2", isBacklog: true
+ * 2. "#health Morning run today 7am [45min]"
+ *    → project: "health", name: "Morning run", date: today 07:00, duration: 45min, priority: p2
+ *
+ * 3. "#work Call with client friday 2:30pm [30min] p1"
+ *    → project: "work", name: "Call with client", date: Friday 14:30, duration: 30min, priority: p1
+ *
+ * 4. "Buy milk"
+ *    → project: undefined, name: "Buy milk", no date, no duration, priority: p2, isBacklog: true
+ *
+ * 5. "#personal Call dentist someday"
+ *    → project: "personal", name: "Call dentist", no date, backlog: true, priority: p2
  */
 
 import * as chrono from 'chrono-node';
@@ -52,7 +59,10 @@ export function parseTask(input: string): ParsedTask {
     raw = raw.replace(priorityMatch[0], '').trim();
   }
 
-  // Extract date/time using chrono-node
+  // Strip backlog keywords so they don't end up in the task name
+  raw = raw.replace(/\b(someday|eventually|one day)\b/gi, '').replace(/\s{2,}/g, ' ').trim();
+
+  // Extract date/time using chrono-node (handles combined date+time: "tomorrow 12:00", "friday 2:30pm")
   const parsed = chrono.parse(raw, new Date(), { forwardDate: true });
   let scheduledAt: Date | undefined;
   if (parsed.length > 0) {
