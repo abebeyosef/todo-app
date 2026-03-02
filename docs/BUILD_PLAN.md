@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 2 March 2026
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 2 March 2026 (Phase 21)
 
 ---
 
@@ -1746,7 +1746,14 @@ After implementing, update the build status table at the top of this file to sho
 ## Phase 20 — Inbox Fallback for Unassigned Tasks
 **What this does:** Tasks added without a `#project` tag currently disappear from view. This fix ensures they always land in the Inbox project instead, where they can be found and categorised later.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
+
+**Completion Notes:**
+- `addTask()` in `page.tsx` now finds the Inbox project from the loaded `projects` state and uses `effectiveProjectId = task.projectId ?? matchedProject?.id ?? inboxProject?.id ?? null` — so any task with no `#tag` automatically goes to the Inbox project.
+- `renderInbox()` updated to show tasks where `!t.projectId || t.projectId === inboxProject?.id`, covering both null-project legacy tasks and newly assigned Inbox tasks.
+- `Sidebar.tsx` `loadProjects()`: finds the Inbox project row by name, then counts `inboxCount` as tasks where `!t.project_id || t.project_id === inboxProjectId`. The Inbox project is excluded from the "My Projects" list so it doesn't appear twice.
+- The sidebar Inbox nav now routes to `/inbox` (the new dedicated page, Phase 21.1). `isInboxPage` added to `activeNav` detection.
+- Build: `next build` passes cleanly. Commit: dab25be.
 
 ---
 
@@ -1805,7 +1812,32 @@ After implementing, update the build status table at the top of this file to sho
 
 **What this does:** Implements six distinct improvements observed from user testing. Each section is self-contained — implement them in order and confirm each works before moving to the next.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
+
+**Completion Notes:**
+- **21.1 — Inbox page (`src/app/inbox/page.tsx`, new):** Fetches tasks where `project_id = inbox.id OR project_id IS NULL`. Sort selector (Priority / Date / Date added / Alphabetical) persisted to `localStorage` under `'inbox-sort'`. Full task management (complete, delete, priority change, add task via InlineTaskForm). Empty state: "Your inbox is empty. Tasks without a project land here." Sidebar Inbox nav updated to route to `/inbox`; Inbox project hidden from My Projects list.
+- **21.2 — Health log persistence (`src/components/HealthLog.tsx`):** Added 500ms debounce using `debounceRef` so Supabase is not hammered on every keystroke. `saved` state shows "Saved ✓" in green (#16a34a, 12px) for 1.5s after each successful upsert. The upsert logic was already correct; this phase added debounce and visual confirmation.
+- **21.3 — Habit tracking types (`src/types/habit.ts`, `src/app/habits/page.tsx`):** Added `TrackingType` union (`checkbox | count | duration | amount | rating | mood | yesno`) to habit type. `logValues: Map<string, LogValue>` replaces the old `checked: Set<string>`. `logHabit()` upserts with `value` and `text_value`. Daily checklist renders per-type inputs: checkbox, Yes/No pills, +/− stepper (count), number input (duration/amount), 10-dot rating row, 5-emoji mood row. Manage panel add form includes Type selector + optional Goal/Unit fields. **Requires SQL migration** — see section 21.3 for the `ALTER TABLE` statements.
+- **21.4 — Search overlay (`src/components/SearchOverlay.tsx`, `src/components/GlobalOverlays.tsx`, new):** Full-screen dark-backdrop overlay with auto-focused search input. Queries `tasks.ilike('name', '%query%')` after 2+ characters, showing task name + `#Project` in colour + date. Escape closes. `GlobalOverlays.tsx` is a client component in `layout.tsx` that listens for `'open-search'` window event and manages overlay visibility. Sidebar Search button now dispatches `'open-search'`. Clicking a result dispatches `'open-task-detail'` custom event with `taskId`.
+- **21.5 — Task detail panel (`src/components/TaskDetailPanel.tsx`, new):** 400px right slide-in panel with: editable task name (click-to-edit → Supabase UPDATE on blur/Enter); metadata row (date/priority/project pills); description textarea (saves on blur with "Saved ✓"); sub-tasks section (INSERT/UPDATE/DELETE on `subtasks` table); comments section (INSERT on `task_comments` table, Cmd+Enter to post). `TaskItem` gained `onOpen` prop — clicking the task name area opens the panel. `page.tsx` manages `selectedTaskId` state and renders the panel. All Supabase calls are defensive (try/catch, empty graceful fallback). **Requires SQL migration** — see section 21.5 for the `CREATE TABLE` statements.
+- **21.6 — Habit calendar (`src/components/HabitCalendar.tsx`, `src/app/habits/page.tsx`):** Habits page now has Today/Calendar tabs. Calendar tab shows `<HabitCalendar fullScreen />` only. `fullScreen` prop: streak cards above grid (36px numbers), larger cells at `calc((100vh - 280px) / numWeekRows)`, date number top-left + completion fraction centered, today cell with 2px `--accent` outline, "Today" reset button, click-to-open day popover listing completed habits.
+- **21.7 — Upcoming week view (`src/app/page.tsx`):** `renderUpcoming()` completely replaced with 7-column Mon–Sun week grid. 60px per hour, 7am–10pm time axis. All-day row with date headers at top. Timed task event blocks: `top = (h - 7 + m/60) * 60`, `height = max(duration/60 * 60, 28)`, background = project colour at 20% opacity + 3px coloured border-left. Red current-time indicator line on current week. Week navigation via `weekOffset` state (◀/This week/▶). Clicking any task block opens task detail panel.
+- New files: `src/app/inbox/page.tsx`, `src/components/SearchOverlay.tsx`, `src/components/GlobalOverlays.tsx`, `src/components/TaskDetailPanel.tsx`.
+- Updated files: `src/app/page.tsx`, `src/components/Sidebar.tsx`, `src/components/HealthLog.tsx`, `src/components/HabitCalendar.tsx`, `src/app/habits/page.tsx`, `src/types/habit.ts`, `src/types/task.ts`, `src/app/layout.tsx`.
+- Build: `next build` passes cleanly with zero TypeScript errors. Commit: dab25be.
+- **SQL migrations still needed by user** (Supabase dashboard → SQL Editor):
+  ```sql
+  -- Phase 21.3 habit types
+  alter table habits add column tracking_type text not null default 'checkbox';
+  alter table habits add column unit text;
+  alter table habits add column goal numeric;
+  alter table habit_logs add column value numeric;
+  alter table habit_logs add column text_value text;
+  -- Phase 21.5 task detail
+  create table subtasks (id uuid default gen_random_uuid() primary key, task_id uuid references tasks(id) on delete cascade, name text not null, completed boolean default false, sort_order integer default 0, created_at timestamptz default now());
+  create table task_comments (id uuid default gen_random_uuid() primary key, task_id uuid references tasks(id) on delete cascade, body text not null, created_at timestamptz default now());
+  alter table tasks add column description text;
+  ```
 
 ---
 
