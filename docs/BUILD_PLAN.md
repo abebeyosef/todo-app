@@ -65,7 +65,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 22 | Inbox as Master Task Overview | [x] Done |
 | 23 | Google Calendar Sync Reliability | [x] Done |
 | 24 | Duration in Upcoming View & Free-order NL Parsing | [x] Done |
-| 25 | Completed Tasks Visible In-Place | [ ] Pending |
+| 25 | Completed Tasks Visible In-Place | [x] Done |
 
 ---
 
@@ -2529,7 +2529,14 @@ Also verify inline highlighting in the task input field correctly highlights eac
 ## Phase 25 — Completed Tasks Visible In-Place
 **What this does:** Instead of completed tasks disappearing entirely, they now appear at the bottom of each view section as greyed-out rows with a strikethrough task name. All task details (project, date, duration, priority) are retained and visible. Clicking the checkbox again reopens the task and returns it to the active list. A collapsible "Completed" section header keeps the list tidy when there are many completed tasks.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
+
+**Completion Notes:**
+- `src/app/page.tsx`: added `byCompletedAt` sorter; added `completedTasks` derived array (sorted by completedAt desc); added `renderCompleted` helper that wraps `CompletedSection` with callbacks pre-bound; wired into Today (scoped to today), By Project grouped (per-project scope), By Project single (same project scope), and Backlog (isBacklog scope). Each uses a unique `storageKey`. Upcoming view intentionally left unchanged.
+- `src/components/TaskItem.tsx`: when `task.completed`, checkbox renders as filled accent circle with ✓; task name gets `line-through` + muted color; project dot row, date row, project label, and right-side actions all wrapped with `opacity: 0.45`. Reopening a completed task skips the fade animation.
+- `src/components/CompletedSection.tsx` (new): collapsed by default; `localStorage` persists expanded state per `storageKey`; renders nothing when `tasks.length === 0`; count badge shows number of tasks.
+- `src/app/inbox/page.tsx`: removed `eq('completed', false)` filter; added `completedTasksAll` sorted by completedAt desc; added `CompletedSection` at the bottom with `showProjectLabel` and key `completed-alltasks-open`.
+- Build clean. Committed `cb82b63` and pushed. Vercel deployment triggered.
 
 ### Background (from code investigation)
 - Completed tasks are already fetched from Supabase — the query on line 165 of `src/app/page.tsx` has no `completed` filter
@@ -2627,7 +2634,7 @@ Add the `<CompletedSection>` to each view that shows tasks. The completed tasks 
 
 **Approach:** Run `npm run build` to catch TypeScript errors. Files changed: `TaskItem.tsx`, `CompletedSection.tsx` (new), `page.tsx`, `inbox/page.tsx`.
 
-**Completion Notes:** *(Claude Code fills this in after completing 25.5)*
+**Completion Notes:** Build clean. Committed `cb82b63` and pushed. Vercel deployment triggered.
 
 ---
 
