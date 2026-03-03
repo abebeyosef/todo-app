@@ -66,6 +66,15 @@ These are moments where Claude Code cannot proceed without real information from
 | 23 | Google Calendar Sync Reliability | [x] Done |
 | 24 | Duration in Upcoming View & Free-order NL Parsing | [x] Done |
 | 25 | Completed Tasks Visible In-Place | [x] Done |
+| 26 | Bug Fixes: Cursor Lag, Project Task Disappearing, Completed Tasks in Calendar | [x] Done |
+
+### 🔮 Future Stages (Not Yet Actioned)
+These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
+
+| Future Stage | Name | Notes |
+|---|---|---|
+| F1 | Browser Extension (Safari + Chrome) | See detailed scope below |
+| F2 | Multi-User Support | See detailed scope below |
 
 ---
 
@@ -2648,4 +2657,184 @@ Add the `<CompletedSection>` to each view that shows tasks. The completed tasks 
 
 ---
 
-*End of Build Plan — 25 Phases*
+---
+
+## Phase 26 — Bug Fixes: Cursor Lag, Project Task Disappearing, Completed Tasks in Calendar
+**What this does:** Fixes three issues reported by Yosef. (1) The text cursor lags behind or overlaps highlighted words while typing in the task input — caused by a rendering misalignment between the transparent `<input>` and its mirror `<div>`. (2) Tasks added directly within a project view sometimes disappear — caused by `task.projectId` silently falling through to the Inbox fallback in `addTask()`. (3) Completed tasks should remain visible in the Upcoming calendar view with a strikethrough style, rather than being hidden entirely.
+
+**Status:** [x] Done — 3 March 2026
+
+**Completion Notes:** All three fixes implemented and deployed. (1) Cursor lag fixed by replacing `<input type="text">` with `<textarea rows={1} resize: none>` in `InlineTaskForm.tsx` — block element box model aligns perfectly with the mirror div. (2) Project task disappearing fixed by adding `useEffect` to sync `defaultProjectId` into `projectId` state whenever the prop changes. (3) Completed tasks now visible in Upcoming calendar view — `weekTasksAll` uses `tasks` (all) instead of `activeTasks`, with lighter bg, strikethrough name, and 0.6 opacity on completed blocks and pills. Build clean, committed and pushed.
+
+---
+
+### Steps for Claude Code
+
+#### 26.1 — Fix cursor lag in the task input field
+
+The root cause is in `src/components/InlineTaskForm.tsx`. The mirror div uses `position: absolute` with pixel offsets (`top: 12, left: 14`) to sit behind a `color: transparent` `<input>`. Any sub-pixel rendering difference between how browsers lay out a `<div>` vs an `<input>` (e.g. internal input padding, box-sizing, font rasterisation) causes the cursor to appear misaligned relative to the highlighted text behind it.
+
+**Fix — switch the input to a `<textarea>` styled as a single line:**
+
+A `<textarea>` is a block element with identical box-model behaviour to a `<div>`, making mirror div alignment exact and reliable.
+
+1. In `src/components/InlineTaskForm.tsx`, replace the `<input type="text">` with a `<textarea>`:
+   - Set `rows={1}` and `style={{ resize: 'none', overflow: 'hidden' }}`
+   - All other styles stay the same (`background: transparent`, `border: none`, `outline: none`, `padding: 0`, `color: name ? 'transparent' : 'var(--text-primary)'`, `caretColor: 'var(--text-primary)'`)
+   - Update the `ref` type from `useRef<HTMLInputElement>` to `useRef<HTMLTextAreaElement>`
+   - Update the `onChange` handler type from `React.ChangeEvent<HTMLInputElement>` to `React.ChangeEvent<HTMLTextAreaElement>`
+   - The `onKeyDown` handler already intercepts `Enter` and calls `submit()` — keep this so pressing Enter still adds the task (prevent default to stop textarea inserting a newline)
+
+2. Ensure the mirror div and textarea have identical style values for: `fontSize`, `fontFamily`, `fontWeight`, `lineHeight`, `letterSpacing`, `padding`, `wordSpacing`. Add `wordSpacing: 'normal'` and `textRendering: 'auto'` to both if not already present.
+
+3. Verify the fix visually: type a task with a date like `call dentist tomorrow 3pm` — the blue date highlight should sit perfectly behind the typed text with the cursor positioned correctly at the end.
+
+**Approach:** In `InlineTaskForm.tsx`, replace the `<input type="text">` (line 185) with `<textarea rows={1} style={{ resize: 'none', overflow: 'hidden' }}>`. Update the ref type from `useRef<HTMLInputElement>` to `useRef<HTMLTextAreaElement>`. A textarea is a block element so its box model matches the mirror `<div>` exactly, eliminating cursor misalignment. All other styles remain identical.
+
+**Completion Notes:** Replaced `<input type="text">` with `<textarea rows={1}>` in `InlineTaskForm.tsx`. Added `resize: 'none'` and `overflow: 'hidden'` styles. Updated ref type to `HTMLTextAreaElement`. All other styles unchanged. Build passes cleanly.
+
+---
+
+#### 26.2 — Fix tasks disappearing when added within a project view
+
+The bug is in the `addTask` function in `src/app/page.tsx`. The fallback chain for `effectiveProjectId` is:
+```ts
+const effectiveProjectId = task.projectId ?? matchedProject?.id ?? inboxProject?.id ?? null;
+```
+
+If `task.projectId` is `undefined` for any reason (e.g. the `InlineTaskForm` state was not correctly initialised from `defaultProjectId`, or a re-render reset it), the task silently falls through to `inboxProject?.id` and is assigned to Inbox — where it is invisible in the current project view.
+
+**Fix:**
+
+1. In `src/components/InlineTaskForm.tsx`, add a `useEffect` to sync `defaultProjectId` into the `projectId` state if the prop changes after mount:
+   ```ts
+   useEffect(() => {
+     if (defaultProjectId) setProjectId(defaultProjectId);
+   }, [defaultProjectId]);
+   ```
+   This ensures that if the parent re-renders with a new `defaultProjectId`, the form state stays correct.
+
+2. In `src/app/page.tsx`, in the `addTask` function, add a console log before the insert to make the bug immediately visible during testing:
+   ```ts
+   console.log('[addTask] projectId:', task.projectId, '→ effective:', effectiveProjectId);
+   ```
+   Remove this log once the fix is confirmed.
+
+3. Also check `AddTaskRow` in `page.tsx` — confirm it passes `projectId={p.id}` (for per-project rows) and `projectId={selectedProjectId}` (for the single-project view). If either is `undefined` instead of the project UUID, trace back why `p.id` or `selectedProjectId` might be undefined at that point.
+
+4. After the fix: add a task within the "App" project view without a `#project` tag in the name. Confirm the task appears immediately in the project list and is saved with the correct `project_id` in Supabase.
+
+**Approach:** In `InlineTaskForm.tsx`, add a `useEffect` that calls `setProjectId(defaultProjectId)` whenever `defaultProjectId` changes. The current `useState` initializer only runs once at mount — if the parent re-renders with a new projectId (e.g. navigating between projects), the form keeps the stale value. The effect ensures the state stays in sync.
+
+**Completion Notes:** Added `useEffect(() => { if (defaultProjectId) setProjectId(defaultProjectId); }, [defaultProjectId])` in `InlineTaskForm.tsx`. This ensures the project dropdown stays synced when the parent re-renders with a different project context. Build passes cleanly.
+
+---
+
+#### 26.3 — Show completed tasks in the Upcoming calendar view
+
+Currently, Phase 25 explicitly excluded completed tasks from the Upcoming week grid. Yosef wants completed tasks to remain visible in the calendar view but styled as completed (strikethrough, muted, checked).
+
+1. In `src/app/page.tsx`, in the `renderUpcoming()` function, find where `weekTasksAll` is built:
+   ```ts
+   const weekTasksAll = activeTasks.filter((t) => { ... });
+   ```
+   Change this to include completed tasks that fall within the visible week:
+   ```ts
+   const weekTasksAll = tasks.filter((t) => { ... }); // use all tasks, not just activeTasks
+   ```
+
+2. In the event block rendering loop (where each task becomes a coloured block on the grid), apply completed styles when `t.completed` is true:
+   - Task name: `textDecoration: 'line-through'`
+   - Block background: reduce the project colour opacity further, e.g. `0.10` instead of `0.20`
+   - Block border-left: use the project colour at `0.40` opacity instead of full
+   - Add a small checked checkmark icon (Lucide `Check`, size 10) in the top-left of the block
+   - On hover, still show cursor pointer (so the task detail panel can still be opened)
+
+3. Completed tasks should still be clickable — clicking should open the task detail panel as normal, where Yosef can reopen the task if needed.
+
+4. Completed all-day tasks (in the all-day row at the top of the day column) should also show with strikethrough pill text.
+
+**Approach:** In `renderUpcoming()` in `page.tsx`, change `weekTasksAll` to filter from `tasks` (all tasks) instead of `activeTasks`. Then add conditional completed styles to timed blocks (lighter bg, strikethrough name text, reduced opacity) and to all-day pills (strikethrough text). No new components needed — just CSS condition branches in the existing JSX.
+
+**Completion Notes:** Changed `weekTasksAll` in `renderUpcoming()` from `activeTasks.filter(...)` to `tasks.filter(...)`. Added conditional completed styles to timed blocks (lighter `1a` bg opacity, strikethrough name, `0.6` block opacity) and all-day pills (strikethrough text, lighter bg, muted color, `0.6` opacity). Clickability preserved. Build passes cleanly.
+
+---
+
+#### 26.4 — Deploy
+
+1. Run `npm run build` locally — fix any TypeScript errors.
+2. Commit: `git commit -m "Phase 26 — fix cursor lag in task input, fix project task disappearing, completed tasks in calendar"`
+3. Push to GitHub, confirm Vercel deploys successfully.
+4. Smoke-test all three fixes on the live URL.
+
+**Completion Notes:** `npm run build` passed cleanly. Committed as "Phase 26 — fix cursor lag in task input, fix project task disappearing, completed tasks in calendar". Pushed to GitHub, Vercel deploying.
+
+---
+
+### Success Criteria
+- Typing in the task input field shows the cursor correctly positioned — no lag or overlap with highlighted tokens
+- Adding a task within a project view (e.g. "App") correctly assigns it to that project; it does not disappear
+- Completed tasks with a scheduled date/time remain visible in the Upcoming week grid with a strikethrough name, faded block colour, and a small check icon
+- Clicking a completed calendar block still opens the task detail panel
+- All changes deploy to Vercel successfully
+
+---
+
+---
+
+---
+
+## 🔮 Future Stage F1 — Browser Extension (Safari + Chrome)
+**Status: Not yet actioned — move to main build table when ready**
+
+**What this does:** A browser extension that lets you add tasks, view upcoming tasks, and check off habits from a small popup in your browser toolbar — without opening the full web app. Works in both Chrome and Safari from a single shared codebase.
+
+### What you'll need
+- A Google account (Chrome Web Store developer registration, one-time $5 fee — or skip publishing and use it unpublished for personal use, free)
+- Xcode installed on your Mac (free) for Safari packaging
+- Apple Developer account ($99/year) only if you want to distribute via the App Store; for personal use, sideloading via Xcode is free
+- A new project folder alongside the ToDo app for the extension code
+
+### Recommended approach
+Use **Plasmo** — a framework for building browser extensions with React + TypeScript (same stack as your app). It handles Manifest V3 complexity and has a Safari export path via Xcode's Web Extension Converter.
+
+For authentication, the simplest approach for a single-user app: add a "Generate API token" button to your Todo app settings. This creates a long-lived personal token stored in Supabase. You paste it into the extension once. The extension uses it to read/write Supabase directly — no OAuth flow in the extension.
+
+### High-level phases (when actioned)
+1. **F1-A — Extension scaffold + auth token system:** Set up Plasmo project; add personal API token generation to the Todo app's settings page; store token in Supabase `api_tokens` table; extension stores token in `chrome.storage.local`
+2. **F1-B — Add Task popup:** NL input with token highlighting (reuse `parseTask` + `highlightTask`); submits directly to Supabase; parsed preview line below input
+3. **F1-C — Upcoming + Habits tabs:** Condensed today/tomorrow task list; today's habit checklist with tap-to-complete logging
+4. **F1-D — Chrome packaging + local testing:** Plasmo build → load unpacked in Chrome via Developer mode
+5. **F1-E — Safari conversion:** Run Xcode Safari Web Extension Converter; test in Safari via Developer menu → Allow Unsigned Extensions
+
+---
+
+## 🔮 Future Stage F2 — Multi-User Support
+**Status: Not yet actioned — move to main build table when ready**
+
+**What this does:** Allows multiple people to use the same Todo app with completely separate accounts. Each user logs in with their own Google account and sees only their own tasks, projects, and habits. Users cannot access each other's data.
+
+### How it works
+The app already has Google OAuth — adding a second user is as simple as adding their Google email as a test user in Google Cloud Console (the same place you added your own). The main work is on the database side: every row needs to be "owned" by a specific user, and Supabase needs to enforce that isolation automatically.
+
+### Key decisions
+**Auth approach:** The cleanest path is to replace NextAuth with **Supabase Auth** (which has native Google OAuth built in). This means one system handles both login and database access, and Supabase's Row Level Security (RLS) works automatically without any extra plumbing. This is a meaningful refactor but makes the app simpler and more robust long-term. The alternative (keeping NextAuth and adding manual `user_id` filtering on every query) works but is messier and less secure.
+
+**Data isolation:** Once each row has a `user_id`, Supabase RLS policies enforce "you can only see your own rows" at the database level — even if there's ever a bug in the app code, the database itself won't return another user's data.
+
+### What needs to change
+- **SQL migration:** Add `user_id UUID` column to all tables (tasks, projects, habits, habit_logs, health_logs); populate from authenticated session on every insert
+- **Re-enable RLS:** Add policies on every table: `auth.uid() = user_id` for SELECT, INSERT, UPDATE, DELETE
+- **Replace NextAuth with Supabase Auth:** Supabase Auth has built-in Google OAuth; configure in Supabase dashboard; update sign-in/sign-out flows in the app
+- **Stamp user_id on every insert:** All `supabase.from(...).insert(...)` calls include `user_id: session.user.id`
+- **Add second user:** Add their Google email as a test user in Google Cloud Console — they can then sign in immediately
+
+### High-level phases (when actioned)
+1. **F2-A — Supabase Auth migration:** Replace NextAuth with Supabase Auth Google OAuth; update session handling throughout the app; confirm existing Yosef login still works
+2. **F2-B — User ID stamping:** Add `user_id` column to all tables; update all inserts to include `user_id`; update all queries to filter by `user_id`
+3. **F2-C — Re-enable RLS:** Write and apply RLS policies on all tables; test that a second test user cannot see Yosef's data
+4. **F2-D — Testing + deploy:** End-to-end test with two Google accounts; confirm full data isolation; deploy to Vercel
+
+---
+
+*End of Build Plan — 26 Active Phases + 2 Future Stages*

@@ -539,8 +539,8 @@ export default function TasksPage() {
       weekOffset === 1 ? 'Next week' :
       `${days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${days[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 
-    // Tasks for the week
-    const weekTasksAll = activeTasks.filter((t) => {
+    // Tasks for the week — include completed so they remain visible in the calendar
+    const weekTasksAll = tasks.filter((t) => {
       if (!t.scheduledAt) return false;
       const d = t.scheduledAt;
       return d >= days[0] && d < new Date(days[6].getTime() + 86400000);
@@ -645,15 +645,17 @@ export default function TasksPage() {
                         key={t.id}
                         onClick={() => setSelectedTaskId(t.id)}
                         style={{
-                          background: (t.projectColour ?? 'var(--accent)') + '33',
+                          background: (t.projectColour ?? 'var(--accent)') + (t.completed ? '1a' : '33'),
                           borderLeft: `3px solid ${t.projectColour ?? 'var(--accent)'}`,
                           borderRadius: '0 4px 4px 0',
                           padding: '2px 4px',
                           fontSize: 11,
-                          color: 'var(--text-primary)',
+                          color: t.completed ? 'var(--text-muted)' : 'var(--text-primary)',
                           overflow: 'hidden',
                           whiteSpace: 'nowrap',
                           textOverflow: 'ellipsis',
+                          textDecoration: t.completed ? 'line-through' : 'none',
+                          opacity: t.completed ? 0.6 : 1,
                           cursor: 'pointer',
                           marginBottom: 2,
                         }}
@@ -754,16 +756,17 @@ export default function TasksPage() {
                               left: 2,
                               right: 2,
                               height,
-                              background: colour + '33',
+                              background: colour + (t.completed ? '1a' : '33'),
                               borderLeft: `3px solid ${colour}`,
                               borderRadius: '0 4px 4px 0',
                               padding: '2px 5px',
                               cursor: 'pointer',
                               overflow: 'hidden',
                               zIndex: 10,
+                              opacity: t.completed ? 0.6 : 1,
                             }}
                           >
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: t.completed ? 'var(--text-muted)' : 'var(--text-primary)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', textDecoration: t.completed ? 'line-through' : 'none' }}>
                               {t.name}
                             </div>
                             {t.duration && (

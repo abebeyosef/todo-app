@@ -69,6 +69,11 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
   const [projectId, setProjectId] = useState<string | undefined>(defaultProjectId);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
 
+  // Sync defaultProjectId if parent re-renders with a new project (fixes task disappearing bug)
+  useEffect(() => {
+    if (defaultProjectId) setProjectId(defaultProjectId);
+  }, [defaultProjectId]);
+
   // Bug 19.0.3: ignore stale error from before mount; only show errors triggered after mount
   const [localError, setLocalError] = useState<string | null>(null);
   const mountedRef = useRef(false);
@@ -77,7 +82,7 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
     setLocalError(error ?? null);
   }, [error]);
 
-  const nameRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLTextAreaElement>(null);
   const priorityMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { nameRef.current?.focus(); }, []);
@@ -182,9 +187,9 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
             }}
           />
         )}
-        <input
+        <textarea
           ref={nameRef}
-          type="text"
+          rows={1}
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -202,6 +207,8 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
             outline: 'none',
             padding: 0,
             margin: 0,
+            resize: 'none',
+            overflow: 'hidden',
             // When there's content, hide the text so the mirror shows through
             color: name ? 'transparent' : 'var(--text-primary)',
             caretColor: 'var(--text-primary)',
