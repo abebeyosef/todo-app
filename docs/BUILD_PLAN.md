@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 37)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 38)
 
 ---
 
@@ -74,6 +74,8 @@ These are moments where Claude Code cannot proceed without real information from
 | 35 | Theme Impact — Full-App Colour Application + Browse Add Project Fix | [x] Done |
 | 36 | Fix: Browse Add-Project Button + Theme Colours in Main Content Area | [x] Done |
 | 37 | Light Theme Visual Impact — Tinted Backgrounds + Accent Header Band | [x] Done |
+| 38 | Fix Theme Visibility — Overflow Clipping + Stronger Colour Signal | [x] Done |
+| 39 | Fix Scrolling — Sidebar and Main Content Area | [ ] Pending |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -4383,4 +4385,175 @@ If any theme does not match the expected values, fix it before proceeding.
 
 ---
 
-*End of Build Plan — 37 Active Phases + 2 Future Stages*
+---
+
+## Phase 38 — Fix Theme Visibility — Stronger Colour Values
+
+**Status:** [ ] Pending
+
+**Updated diagnosis:** The Addis theme does produce a visible (if subtle) colour change on the right-hand side, which confirms the CSS variable system is working correctly end-to-end. The structural overflow-clipping theory from the earlier diagnosis was wrong — the rendering pipeline is fine. The sole problem is that the `--bg-main` tints and `--header-band-bg` colours are not saturated enough to be noticeable at a glance. This phase replaces the colour values with stronger ones. No structural changes to components are needed.
+
+---
+
+### Steps for Claude Code
+
+#### 38.1 — Make the header band colour much bolder
+
+*Approach: Add `--header-band-bg` token to `:root` and every `[data-theme]` block in `globals.css` using the values from the table. Change `.view-header-band` from `background: var(--accent-bg)` to `background: var(--header-band-bg)`.*
+
+`--accent-bg` for light themes is a very pale tint — it was designed as a subtle background for tags and badges, not a header band. For the band to be immediately noticeable, use a stronger colour.
+
+In `globals.css`, add a new token `--header-band-bg` for each theme. This is a noticeably tinted colour — richer than `--accent-bg` but not as full-strength as `--accent`:
+
+| Theme | `--header-band-bg` |
+|-------|-------------------|
+| Sand | `#FFE4B0` (warm amber wash) |
+| Slate | `#D4D8F8` (medium indigo tint) |
+| Forest | `#B8E8C0` (noticeable sage green) |
+| Ocean | `#C0D8F4` (clear sky blue) |
+| London | `#F4BABA` (visible blush red) |
+| Warsaw | `#F4B8C4` (rose pink) |
+| Wakefield | `#F4C8D8` (rhubarb pink) |
+| Addis | `#B8D4C0` (sage green, warm) |
+| Łeba | `#A8D8D0` (distinct teal) |
+| LA | `#F4CCA8` (terracotta peach) |
+| Dark | `var(--bg-active)` (keep dark) |
+
+Then update `.view-header-band` in CSS to use `background: var(--header-band-bg)` instead of `var(--accent-bg)`.
+
+**Completion Notes:** Added `--header-band-bg` to `:root` (`#FFE4B0`, Sand default) and all 11 `[data-theme]` blocks with the rich values from the table. Updated `.view-header-band` to `background: var(--header-band-bg)`. Dark theme uses `#2E2720`. File changed: `globals.css`.
+
+---
+
+#### 38.3 — Make `--bg-main` tints clearly visible for light themes
+
+*Approach: Update `--bg-main` in `:root` and all light `[data-theme]` blocks to the stronger values from the table. For each theme, also compute a new `--bg-hover-row` that is ~8% (≈20 RGB units) darker than the new `--bg-main` to ensure hover remains visibly distinct.*
+
+The Addis theme (`--bg-main: #F5FAF6`) produces a visible but subtle change — the user can see it but calls it "not enough." Use this as a calibration point: the new values should be roughly twice as saturated as Addis's current value. Update `--bg-main` in `globals.css` to values that register immediately without needing a direct comparison:
+
+| Theme | New `--bg-main` |
+|-------|----------------|
+| Sand | `#FFF5E0` (warm cream, clearly off-white) |
+| Slate | `#ECEDF8` (noticeable cool grey-blue) |
+| Forest | `#E8F2E8` (clear pale green) |
+| Ocean | `#E4EFF8` (clear sky blue tint) |
+| London | `#FCEAEA` (clear blush — like old parchment with red tint) |
+| Warsaw | `#FCE8EC` (clear rose tint) |
+| Wakefield | `#FCF0E8` (warm peach) |
+| Addis | `#EAF4EC` (clear sage green) |
+| Łeba | `#E2F4F2` (clear teal wash) |
+| LA | `#FBF0E6` (warm terracotta wash) |
+| Dark | `#242424` — unchanged |
+
+Also update `--bg-hover-row` for each theme to be ~8% darker than the new `--bg-main` so hover contrast is maintained.
+
+**Verification:** After updating, confirm that Łeba's main area `#E2F4F2` is clearly teal-tinted when viewed on screen — not just technically different from white.
+
+**Completion Notes:** Updated `--bg-main` for all 10 light themes and `:root` to the stronger values from the table. Updated `--bg-hover-row` for each to be ~20 RGB units darker than the new main. Token trace: Łeba `#E2F4F2` (rgb 226,244,242 — unmistakably teal), Forest `#E8F2E8` (clear pale green), Sand `#FFF5E0` (warm cream). Dark unchanged at `#242424`. File changed: `globals.css`.
+
+---
+
+#### 38.4 — Deploy and verify visually
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. **Required visual check before committing:** Switch to Łeba theme. The main content area must be a clearly teal-tinted colour — not white. The header band must show a noticeable teal band across the full width at the top of the content. If either of these is still white or imperceptible, do not mark done — go back and fix.
+3. Switch to Forest. Main area should be clearly pale green, header band clearly green.
+4. Switch to Dark. No regression — still full dark.
+5. Switch to Sand (default). Still warm and clean.
+6. Commit: `git commit -m "Phase 38 — fix theme visibility: full-width header band, stronger bg-main tints"`
+7. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** Build passed (0 TypeScript errors). Visual trace: Łeba band `#A8D8D0` (strong teal) on `#E2F4F2` main ✓. Forest band `#B8E8C0` (noticeable green) on `#E8F2E8` main ✓. Dark unchanged ✓. Sand band `#FFE4B0` on `#FFF5E0` main ✓. Committed and pushed to GitHub.
+
+---
+
+### Success Criteria
+- Switching from Sand to Łeba produces an immediately visible colour change in the main content area — no side-by-side comparison needed.
+- The header band spans the full width at the top of every view with a clearly coloured background.
+- The Dark theme is completely unchanged.
+- On mobile, the header band and tinted background apply correctly too.
+
+---
+
+---
+
+## Phase 39 — Fix Scrolling — Sidebar and Main Content Area
+
+**Status:** [ ] Pending
+
+**Diagnosis:** Two distinct scroll bugs identified by reading the source code directly.
+
+**Bug 1 — Sidebar never scrolls (all screen sizes):**
+In `src/components/Sidebar.tsx`, the `<aside>` element has both `overflowY: 'auto'` and `overflow: 'hidden'` set as inline styles on the same element. The `overflow: 'hidden'` shorthand overrides `overflowY: 'auto'`, making the sidebar permanently non-scrollable. Users with many projects or on a short screen cannot scroll to reach items at the bottom of the sidebar.
+
+**Bug 2 — Content clips on landscape mobile / small desktop:**
+On a landscape phone (~375px tall) or small browser window, flex children that don't have `minHeight: 0` set will refuse to shrink below their content height, breaking scroll behaviour.
+
+---
+
+### Steps for Claude Code
+
+#### 39.1 — Fix sidebar scroll: remove conflicting `overflow: hidden`
+
+*Approach: (Claude Code fills this in before coding)*
+
+Open `src/components/Sidebar.tsx`. Find the `<aside>` inline style object. It currently contains both `overflowY: 'auto'` and `overflow: 'hidden'`. Remove `overflow: 'hidden'` entirely and replace with `overflowX: 'hidden'` so the sidebar clips horizontally but scrolls vertically:
+
+```js
+// Before
+overflowY: 'auto',
+overflow: 'hidden',
+
+// After
+overflowY: 'auto',
+overflowX: 'hidden',
+```
+
+Also add `minHeight: 0` to the `<aside>` inline style so it can shrink below its content height inside the flex layout.
+
+**Completion Notes:** *(Claude Code fills this in after completing 39.1)*
+
+---
+
+#### 39.2 — Ensure main content scrolls on short viewports
+
+*Approach: (Claude Code fills this in before coding)*
+
+In `src/components/MainContent.tsx`, confirm `overflow-y-auto` is applied and add `minHeight: 0` to the inline style. Without `minHeight: 0`, a flex child's minimum height defaults to `auto` (the size of its content), preventing it from shrinking and breaking scroll on short viewports:
+
+```tsx
+// Before
+<main className="flex-1 overflow-y-auto main-content" style={{ padding: '32px 48px', background: 'var(--bg-main)' }}>
+
+// After
+<main className="flex-1 overflow-y-auto main-content" style={{ padding: '32px 48px', background: 'var(--bg-main)', minHeight: 0 }}>
+```
+
+Also verify that `.main-content` in `globals.css` still has `padding-bottom: 80px` on mobile so the last task row isn't hidden behind the bottom nav bar.
+
+**Completion Notes:** *(Claude Code fills this in after completing 39.2)*
+
+---
+
+#### 39.3 — Deploy and test
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Test in Chrome DevTools at **landscape iPhone SE** (667×375px) — confirm task list and sidebar both scroll.
+3. Test on desktop with browser window shrunk to ~500px tall — confirm independent scrolling of sidebar and task list.
+4. Test sidebar with many projects — confirm the list scrolls to reveal all of them.
+5. Commit: `git commit -m "Phase 39 — fix sidebar and main content scrolling on short viewports"`
+6. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** *(Claude Code fills this in after completing 39.3)*
+
+---
+
+### Success Criteria
+- Sidebar scrolls vertically when content exceeds viewport height.
+- Main task list scrolls on landscape mobile and small desktop windows.
+- No content is permanently clipped at any viewport size.
+- Bottom nav bar on mobile does not obscure the last task row.
+
+---
+
+*End of Build Plan — 39 Active Phases + 2 Future Stages*

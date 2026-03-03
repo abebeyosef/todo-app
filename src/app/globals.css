@@ -5,10 +5,11 @@
 
   /* Backgrounds */
   --bg-sidebar:       #FAF8F5;
-  --bg-main:          #FFFBF5;
+  --bg-main:          #FFF5E0;
   --bg-active:        #FFEED9;
   --bg-hover-sidebar: #F0EDE8;
-  --bg-hover-row:     #F5F5F5;
+  --bg-hover-row:     #EBE1CC;
+  --header-band-bg:   #FFE4B0;
   --bg-modal:         #FFFFFF;
   --bg-toast:         #1F1F1F;
   --bg-input:         #FFFFFF;
@@ -89,9 +90,9 @@
 
 /* ── Theme: Sand (explicit, matches :root) ─────────────────────────────── */
 [data-theme="sand"] {
-  --bg-sidebar: #FAF8F5; --bg-main: #FFFBF5; --accent: #D97706;
-  --accent-dark: #B45309; --accent-bg: #FFEED9; --bg-active: #FFEED9;
-  --bg-hover-sidebar: #F0EDE8; --bg-hover-row: #F5F5F5;
+  --bg-sidebar: #FAF8F5; --bg-main: #FFF5E0; --accent: #D97706;
+  --accent-dark: #B45309; --accent-bg: #FFEED9; --bg-active: #FFEED9; --header-band-bg: #FFE4B0;
+  --bg-hover-sidebar: #F0EDE8; --bg-hover-row: #EBE1CC;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FFEED9;
   --text-primary: #202020; --text-secondary: #666666; --text-muted: #999999;
   --text-accent: #B45309; --text-toast: #FFFFFF;
@@ -105,7 +106,7 @@
 /* ── Theme: Dark ───────────────────────────────────────────────────────── */
 [data-theme="dark"] {
   --bg-sidebar: #1C1C1E; --bg-main: #242424; --accent: #F5A623;
-  --accent-dark: #D4860B; --accent-bg: #3A2E1A; --bg-active: #2E2720;
+  --accent-dark: #D4860B; --accent-bg: #3A2E1A; --bg-active: #2E2720; --header-band-bg: #2E2720;
   --bg-hover-sidebar: #2A2A2C; --bg-hover-row: #2C2C2E;
   --bg-modal: #2C2C2E; --bg-input: #333335; --bg-toast: #3A3A3C; --bg-tag: #3A2E1A;
   --text-primary: #F2F2F7; --text-secondary: #AEAEB2; --text-muted: #636366;
@@ -121,9 +122,9 @@
 
 /* ── Theme: Ocean ──────────────────────────────────────────────────────── */
 [data-theme="ocean"] {
-  --bg-sidebar: #1E2A3A; --bg-main: #F4F8FC; --accent: #3B82F6;
-  --accent-dark: #2563EB; --accent-bg: #EFF6FF; --bg-active: #1E3A5F;
-  --bg-hover-sidebar: #263447; --bg-hover-row: #E0EDFA;
+  --bg-sidebar: #1E2A3A; --bg-main: #E4EFF8; --accent: #3B82F6;
+  --accent-dark: #2563EB; --accent-bg: #EFF6FF; --bg-active: #1E3A5F; --header-band-bg: #C0D8F4;
+  --bg-hover-sidebar: #263447; --bg-hover-row: #D0DBE4;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #DBEAFE;
   --text-primary: #0F172A; --text-secondary: #475569; --text-muted: #94A3B8;
   --text-accent: #2563EB; --text-toast: #FFFFFF;
@@ -137,9 +138,9 @@
 
 /* ── Theme: Forest ─────────────────────────────────────────────────────── */
 [data-theme="forest"] {
-  --bg-sidebar: #EFF3EF; --bg-main: #F4F8F4; --accent: #2D6A4F;
-  --accent-dark: #1B4332; --accent-bg: #D8F3DC; --bg-active: #D8F3DC;
-  --bg-hover-sidebar: #E0EBE0; --bg-hover-row: #E5EFEA;
+  --bg-sidebar: #EFF3EF; --bg-main: #E8F2E8; --accent: #2D6A4F;
+  --accent-dark: #1B4332; --accent-bg: #D8F3DC; --bg-active: #D8F3DC; --header-band-bg: #B8E8C0;
+  --bg-hover-sidebar: #E0EBE0; --bg-hover-row: #D4DED4;
   --bg-modal: #FAFAF8; --bg-input: #FAFAF8; --bg-toast: #1F1F1F; --bg-tag: #D8F3DC;
   --text-primary: #1A2E1A; --text-secondary: #4A6741; --text-muted: #7A9E7A;
   --text-accent: #1B4332; --text-toast: #FFFFFF;
@@ -152,9 +153,9 @@
 
 /* ── Theme: Slate ──────────────────────────────────────────────────────── */
 [data-theme="slate"] {
-  --bg-sidebar: #F4F5F6; --bg-main: #F4F5FB; --accent: #4F46E5;
-  --accent-dark: #3730A3; --accent-bg: #EEF2FF; --bg-active: #E0E7FF;
-  --bg-hover-sidebar: #EAEBEC; --bg-hover-row: #E8E9F2;
+  --bg-sidebar: #F4F5F6; --bg-main: #ECEDF8; --accent: #4F46E5;
+  --accent-dark: #3730A3; --accent-bg: #EEF2FF; --bg-active: #E0E7FF; --header-band-bg: #D4D8F8;
+  --bg-hover-sidebar: #EAEBEC; --bg-hover-row: #D8D9E4;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #EEF2FF;
   --text-primary: #111827; --text-secondary: #4B5563; --text-muted: #9CA3AF;
   --text-accent: #3730A3; --text-toast: #FFFFFF;
@@ -167,9 +168,9 @@
 
 /* ── Theme: London ─────────────────────────────────────────────────────── */
 [data-theme="london"] {
-  --bg-sidebar: #2D2D2D; --bg-main: #FFF5F5; --accent: #CC0000;
-  --accent-dark: #A30000; --accent-bg: #FDECEA; --bg-active: #4A1010;
-  --bg-hover-sidebar: #383838; --bg-hover-row: #F5F5F5;
+  --bg-sidebar: #2D2D2D; --bg-main: #FCEAEA; --accent: #CC0000;
+  --accent-dark: #A30000; --accent-bg: #FDECEA; --bg-active: #4A1010; --header-band-bg: #F4BABA;
+  --bg-hover-sidebar: #383838; --bg-hover-row: #E8D6D6;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDECEA;
   --text-primary: #1A1A1A; --text-secondary: #555555; --text-muted: #888888;
   --text-accent: #A30000; --text-toast: #FFFFFF;
@@ -183,9 +184,9 @@
 
 /* ── Theme: Warsaw ─────────────────────────────────────────────────────── */
 [data-theme="warsaw"] {
-  --bg-sidebar: #EEF0F3; --bg-main: #FFF4F6; --accent: #C41E3A;
-  --accent-dark: #9B1830; --accent-bg: #FDE8EC; --bg-active: #FDE8EC;
-  --bg-hover-sidebar: #E2E5EA; --bg-hover-row: #F8F9FA;
+  --bg-sidebar: #EEF0F3; --bg-main: #FCE8EC; --accent: #C41E3A;
+  --accent-dark: #9B1830; --accent-bg: #FDE8EC; --bg-active: #FDE8EC; --header-band-bg: #F4B8C4;
+  --bg-hover-sidebar: #E2E5EA; --bg-hover-row: #E8D4D8;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDE8EC;
   --text-primary: #1A1A2E; --text-secondary: #4A4A6A; --text-muted: #8A8AAA;
   --text-accent: #9B1830; --text-toast: #FFFFFF;
@@ -198,9 +199,9 @@
 
 /* ── Theme: Wakefield ──────────────────────────────────────────────────── */
 [data-theme="wakefield"] {
-  --bg-sidebar: #F2EBE0; --bg-main: #FFF8F2; --accent: #C2185B;
-  --accent-dark: #880E4F; --accent-bg: #FCE4EC; --bg-active: #FCE4EC;
-  --bg-hover-sidebar: #EAE0D4; --bg-hover-row: #F2EBE0;
+  --bg-sidebar: #F2EBE0; --bg-main: #FCF0E8; --accent: #C2185B;
+  --accent-dark: #880E4F; --accent-bg: #FCE4EC; --bg-active: #FCE4EC; --header-band-bg: #F4C8D8;
+  --bg-hover-sidebar: #EAE0D4; --bg-hover-row: #E8DCD4;
   --bg-modal: #FFFDF9; --bg-input: #FFFDF9; --bg-toast: #1F1F1F; --bg-tag: #FCE4EC;
   --text-primary: #2C1810; --text-secondary: #6B4C3B; --text-muted: #A08070;
   --text-accent: #880E4F; --text-toast: #FFFFFF;
@@ -213,9 +214,9 @@
 
 /* ── Theme: Addis ──────────────────────────────────────────────────────── */
 [data-theme="addis"] {
-  --bg-sidebar: #1B3A2D; --bg-main: #F5FAF6; --accent: #D4860B;
-  --accent-dark: #A0620A; --accent-bg: #FDF3E3; --bg-active: #243D2D;
-  --bg-hover-sidebar: #24503D; --bg-hover-row: #FAF6EE;
+  --bg-sidebar: #1B3A2D; --bg-main: #EAF4EC; --accent: #D4860B;
+  --accent-dark: #A0620A; --accent-bg: #FDF3E3; --bg-active: #243D2D; --header-band-bg: #B8D4C0;
+  --bg-hover-sidebar: #24503D; --bg-hover-row: #D6E0D8;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDF3E3;
   --text-primary: #1A0F00; --text-secondary: #5C4020; --text-muted: #9A7A50;
   --text-accent: #A0620A; --text-toast: #FFFFFF;
@@ -229,9 +230,9 @@
 
 /* ── Theme: Łeba ───────────────────────────────────────────────────────── */
 [data-theme="leba"] {
-  --bg-sidebar: #E8EEF2; --bg-main: #F2F9F8; --accent: #1B6B5A;
-  --accent-dark: #134E40; --accent-bg: #E0F2EE; --bg-active: #D0ECE6;
-  --bg-hover-sidebar: #DCE4EA; --bg-hover-row: #DFF0EE;
+  --bg-sidebar: #E8EEF2; --bg-main: #E2F4F2; --accent: #1B6B5A;
+  --accent-dark: #134E40; --accent-bg: #E0F2EE; --bg-active: #D0ECE6; --header-band-bg: #A8D8D0;
+  --bg-hover-sidebar: #DCE4EA; --bg-hover-row: #CEE0DE;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #E0F2EE;
   --text-primary: #0F1F2A; --text-secondary: #3A5568; --text-muted: #7A9AAA;
   --text-accent: #134E40; --text-toast: #FFFFFF;
@@ -244,9 +245,9 @@
 
 /* ── Theme: LA ─────────────────────────────────────────────────────────── */
 [data-theme="la"] {
-  --bg-sidebar: #FAF6F0; --bg-main: #FFF8F3; --accent: #D2622A;
-  --accent-dark: #A8471A; --accent-bg: #FDF0E8; --bg-active: #FDE8D8;
-  --bg-hover-sidebar: #F2EBE0; --bg-hover-row: #F0E5D5;
+  --bg-sidebar: #FAF6F0; --bg-main: #FBF0E6; --accent: #D2622A;
+  --accent-dark: #A8471A; --accent-bg: #FDF0E8; --bg-active: #FDE8D8; --header-band-bg: #F4CCA8;
+  --bg-hover-sidebar: #F2EBE0; --bg-hover-row: #E7DCD2;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDF0E8;
   --text-primary: #1E120A; --text-secondary: #6B4832; --text-muted: #A88060;
   --text-accent: #A8471A; --text-toast: #FFFFFF;
@@ -260,7 +261,7 @@
 /* ── View header accent band ───────────────────────────────────────────── */
 /* Negative margins bleed out past MainContent's padding to create a full-width band */
 .view-header-band {
-  background: var(--accent-bg);
+  background: var(--header-band-bg);
   border-bottom: 1px solid var(--border);
   margin-top: -32px;
   margin-left: -48px;
