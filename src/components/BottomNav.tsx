@@ -1,157 +1,52 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Sun, Calendar, FolderOpen, Activity, List, X } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { Project } from '@/types/project';
+import { Sun, Activity, List, LayoutGrid } from 'lucide-react';
+import BrowseScreen from './BrowseScreen';
 
-type Tab = 'today' | 'upcoming' | 'projects' | 'habits' | 'inbox';
+type Tab = 'all-tasks' | 'today' | 'habits' | 'browse';
 
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentView = searchParams.get('view') ?? 'today';
-  const selectedProject = searchParams.get('project');
 
-  const [showProjects, setShowProjects] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [showBrowse, setShowBrowse] = useState(false);
 
-  const loadProjects = useCallback(async () => {
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at');
-    if (data) {
-      setProjects(
-        data
-          .filter((p: { name: string }) => p.name.toLowerCase() !== 'inbox')
-          .map((p: { id: string; name: string; colour: string; created_at: string }) => ({
-            id: p.id,
-            name: p.name,
-            colour: p.colour,
-            createdAt: new Date(p.created_at),
-          }))
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  // Close project drawer on outside click
-  useEffect(() => {
-    if (!showProjects) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('[data-projects-drawer]') && !target.closest('[data-projects-btn]')) {
-        setShowProjects(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showProjects]);
-
-  const activeTab: Tab = pathname === '/habits'
+  const activeTab: Tab | null = showBrowse
+    ? 'browse'
+    : pathname === '/habits'
     ? 'habits'
     : pathname === '/inbox'
-    ? 'inbox'
-    : selectedProject
-    ? 'projects'
-    : currentView === 'upcoming'
-    ? 'upcoming'
+    ? 'all-tasks'
+    : currentView === 'upcoming' || searchParams.get('project')
+    ? null
     : 'today';
 
-  const tabs: { id: Tab; icon: React.ReactNode; label: string }[] = [
-    { id: 'today',    icon: <Sun size={22} />,       label: 'Today' },
-    { id: 'upcoming', icon: <Calendar size={22} />,   label: 'Upcoming' },
-    { id: 'projects', icon: <FolderOpen size={22} />, label: 'Projects' },
-    { id: 'habits',   icon: <Activity size={22} />,   label: 'Habits' },
-    { id: 'inbox',    icon: <List size={22} />,        label: 'All Tasks' },
+  const tabs: { id: Tab; icon: ReactNode; label: string }[] = [
+    { id: 'all-tasks', icon: <List size={22} />,       label: 'All Tasks' },
+    { id: 'today',     icon: <Sun size={22} />,        label: 'Today' },
+    { id: 'habits',    icon: <Activity size={22} />,   label: 'Habits' },
+    { id: 'browse',    icon: <LayoutGrid size={22} />, label: 'Browse' },
   ];
 
   const handleTab = (id: Tab) => {
-    if (id === 'projects') {
-      setShowProjects((v) => !v);
+    if (id === 'browse') {
+      setShowBrowse((v) => !v);
       return;
     }
-    setShowProjects(false);
+    setShowBrowse(false);
     if (id === 'habits') router.push('/habits');
-    else if (id === 'inbox') router.push('/inbox');
+    else if (id === 'all-tasks') router.push('/inbox');
     else if (id === 'today') router.push('/?view=today');
-    else if (id === 'upcoming') router.push('/?view=upcoming');
   };
 
   return (
     <>
-      {/* Project drawer */}
-      {showProjects && (
-        <>
-          {/* Backdrop */}
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.3)',
-              zIndex: 149,
-            }}
-            onClick={() => setShowProjects(false)}
-          />
-          {/* Drawer */}
-          <div
-            data-projects-drawer
-            style={{
-              position: 'fixed',
-              bottom: 64,
-              left: 0,
-              right: 0,
-              background: 'var(--bg-modal)',
-              borderRadius: '16px 16px 0 0',
-              boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
-              zIndex: 150,
-              padding: '16px 0 8px',
-              maxHeight: '60vh',
-              overflowY: 'auto',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', padding: '0 20px 12px' }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>
-                Projects
-              </span>
-              <button
-                onClick={() => setShowProjects(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            {projects.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => { router.push(`/?project=${p.id}`); setShowProjects(false); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  width: '100%',
-                  padding: '12px 20px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontSize: 15,
-                  color: 'var(--text-primary)',
-                }}
-              >
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.colour, flexShrink: 0 }} />
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {showBrowse && <BrowseScreen onClose={() => setShowBrowse(false)} />}
 
       {/* Nav bar */}
       <nav
@@ -174,7 +69,6 @@ export default function BottomNav() {
           return (
             <button
               key={id}
-              data-projects-btn={id === 'projects' ? true : undefined}
               onClick={() => handleTab(id)}
               style={{
                 flex: 1,

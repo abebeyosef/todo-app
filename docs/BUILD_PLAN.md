@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 33)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 34)
 
 ---
 
@@ -70,6 +70,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 31 | Bug Fix: Habit Deletion (Foreign Key Cascade) | [x] Done |
 | 32 | Bug Fix: Dark Sidebar Active Text + Health Metrics Per-Day on Calendar | [x] Done |
 | 33 | Bug Fix: Task Detail Panel Not Opening from All Tasks View | [x] Done |
+| 34 | Mobile Navigation Redesign — Browse Tab & Project Navigation | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -3953,4 +3954,138 @@ The Habits page has two tabs: the daily checklist and the monthly calendar. Curr
 
 ---
 
-*End of Build Plan — 33 Active Phases + 2 Future Stages*
+---
+
+## Phase 34 — Mobile Navigation Redesign — Browse Tab & Project Navigation
+
+**Status:** [x] Done
+
+**Completion Notes:** Replaced the 5-tab mobile nav with a 4-tab layout (All Tasks · Today · Habits · Browse). Created `BrowseScreen.tsx` — a full-screen panel containing search, Upcoming, theme picker, and project list with task counts and add-project flow. Wired into `BottomNav.tsx` via `showBrowse` state; hidden on desktop automatically via the existing `hide-desktop` wrapper. Build clean, zero TypeScript errors. Two files changed, one file created.
+
+**What this does:** Redesigns the mobile bottom navigation bar and introduces a Browse screen. The current mobile nav has five tabs (Today, Upcoming, Projects, Habits, All Tasks). This phase replaces it with four cleaner tabs — **All Tasks · Today · Habits · Browse** — and moves project navigation, search, theme picking, and the Upcoming view into a dedicated Browse screen. The desktop sidebar is unchanged.
+
+---
+
+### Design decisions recorded
+
+- **Bottom tabs (mobile only):** All Tasks | Today | Habits | Browse
+- **Upcoming:** removed from bottom nav; accessible as a tappable row inside Browse
+- **Browse screen** is a full-page view (not a drawer) containing in order:
+  1. Search bar — same search as the existing sidebar search
+  2. Upcoming — a tappable row with calendar icon that navigates to the Upcoming view
+  3. Theme picker — the existing `ThemePicker` component
+  4. My Projects — a collapsible section listing all projects; tapping a project navigates to that project's task list; a `+` button opens the add-project flow
+- **Removed from mobile entirely:** Filters & Labels, Add a Team, Browse Templates, notifications icon
+- **Desktop:** no changes — sidebar, Upcoming, and all other views remain as-is
+
+---
+
+### Steps for Claude Code
+
+#### 34.1 — Update BottomNav tabs
+
+*Approach:* Rewrite `BottomNav.tsx`. Replace the 5-tab layout (today/upcoming/projects/habits/inbox) with 4 tabs: All Tasks (`List`), Today (`Sun`), Habits (`Activity`), Browse (`LayoutGrid`). Remove `showProjects` state and project drawer (moved to `BrowseScreen`). Add `showBrowse` state — Browse tab toggles it; any other tab sets it to false. Active-tab logic: `showBrowse → 'browse'`, `/habits → 'habits'`, `/inbox → 'all-tasks'`, default `→ 'today'`, `?view=upcoming` and `?project=xxx` resolve to `null` (no tab highlighted). Render `<BrowseScreen>` conditionally when `showBrowse` is true, directly from within `BottomNav`'s JSX so it inherits the existing `hide-desktop` wrapper in `layout.tsx`.
+
+Open `src/components/BottomNav.tsx`. Replace the current five-tab layout with four tabs:
+
+| Tab | Icon | Action |
+|-----|------|--------|
+| All Tasks | `List` | Navigate to All Tasks view (`?view=inbox`) |
+| Today | `Sun` | Navigate to Today view (`?view=today`) |
+| Habits | `Activity` | Navigate to `/habits` |
+| Browse | `Grid` or `LayoutGrid` | Open the Browse screen (see 34.2) |
+
+- Remove the Upcoming and Projects tabs from the nav bar.
+- Active tab: accent colour icon + label below + small accent indicator strip at top of tab. Inactive: muted icon, no label.
+- Keep the existing fixed-bottom styling, safe-area-inset, and 64px height.
+- Browse does not navigate to a URL — it toggles the Browse screen open/closed (managed by a `showBrowse` boolean state, or it can be a dedicated route `/browse` if that is cleaner given the existing routing pattern).
+
+**Completion Notes:** Rewrote `BottomNav.tsx`. Replaced 5-tab layout with 4 tabs (All Tasks/Today/Habits/Browse). Removed old project drawer and `showProjects` state. Added `showBrowse` state — Browse tab toggles it; other tabs clear it. Active-tab logic handles all URL patterns. `BrowseScreen` imported and rendered conditionally.
+
+---
+
+#### 34.2 — Create the Browse screen
+
+*Approach:* Create `src/components/BrowseScreen.tsx`. Fixed panel from `top: 0` to `bottom: 64` (above the nav bar), `z-index: 200`, `background: var(--bg-main)`, scrollable. Sections in order: (1) Search — a tappable button that fires `window.dispatchEvent(new Event('open-search'))` to reuse the existing `SearchOverlay`; (2) Upcoming — tappable row, navigates to `/?view=upcoming` and calls `onClose`; (3) Appearance — section heading + `<ThemePicker />`; (4) My Projects — section heading + `+` button + project list fetched from Supabase with task counts, each row navigates to `/?project=${id}` and calls `onClose`. Add-project uses the existing `<ProjectModal>` rendered at the top of the return (outside the scroll container) with inline `createProject` logic.
+
+Create `src/components/BrowseScreen.tsx`. This is a full-page white panel that slides up from the bottom (or renders as a standard page) when the Browse tab is tapped. It contains four sections in order:
+
+**1. Search bar**
+- A rounded input field at the top of the screen (`placeholder="Search tasks..."`)
+- Reuse the existing search logic from `src/app/page.tsx` or `Sidebar.tsx` — wire it to the same search state/handler so results appear immediately as the user types
+- Tapping a search result navigates to that task and opens its detail panel
+
+**2. Upcoming row**
+- A single tappable list row with a `Calendar` icon and the label "Upcoming"
+- Tapping it navigates to the Upcoming view (`?view=upcoming`) and closes the Browse screen
+
+**3. Theme picker**
+- Section heading: "Appearance"
+- Render the existing `<ThemePicker />` component — no changes to the component itself
+
+**4. My Projects**
+- Section heading: "My Projects" with a `+` button on the right
+- List all projects fetched from Supabase, each as a tappable row showing the project's colour dot, `#` symbol, and name, plus a task count badge on the right
+- Tapping a project navigates to that project's task list (e.g. `?view=project&id=xxx`) and closes Browse
+- Tapping `+` opens the existing add-project flow (reuse whatever modal/form already exists)
+- If there are no projects, show a subtle "No projects yet" empty state
+
+**Layout details:**
+- Background: `var(--bg-main)`
+- Section headings: small caps or muted uppercase label, `var(--text-muted)`, `font-size: 11px`
+- Row height: 48px minimum (touch-friendly)
+- The screen should be scrollable if content is taller than the viewport
+- A close affordance is not strictly needed since tapping another bottom tab closes it, but a subtle `×` in the top-right is a nice touch
+
+**Completion Notes:** Created `src/components/BrowseScreen.tsx`. Fixed panel (top: 0, bottom: 64, z-index: 200) covering full screen above nav. Sections: search button (fires `open-search` event), Upcoming row (navigates + closes), Appearance with `<ThemePicker />`, My Projects with task counts + `<ProjectModal>` for add. All navigation calls `onClose` so the panel dismisses on action.
+
+---
+
+#### 34.3 — Wire Browse screen into the app
+
+*Approach:* `layout.tsx` is a Server Component so state cannot live there. `BottomNav.tsx` already manages modal state (`showProjects`) and renders overlays inline — the same pattern applies here. `BrowseScreen` is imported and rendered conditionally inside `BottomNav`'s return. Because `BottomNav` is wrapped in `<div className="hide-desktop">` in `layout.tsx`, `BrowseScreen` (which uses `position: fixed`) is also hidden on desktop via the CSS rule. No changes to `layout.tsx` are required.
+
+1. Import `BrowseScreen` into `src/app/layout.tsx` (or wherever `BottomNav` is rendered).
+2. Manage `showBrowse` state at the layout level (or pass a toggle callback from `BottomNav`).
+3. When Browse tab is tapped: set `showBrowse = true`. When another tab is tapped or a project/Upcoming is selected: set `showBrowse = false`.
+4. Render `BrowseScreen` conditionally:
+   ```tsx
+   {showBrowse && <BrowseScreen onClose={() => setShowBrowse(false)} projects={projects} ... />}
+   ```
+5. Pass the projects list and any required callbacks (navigate to project, add project, search handler) as props.
+6. Ensure Browse is hidden on desktop (`className="hide-desktop"`).
+
+**Completion Notes:** No changes to `layout.tsx` required. `BrowseScreen` is rendered from within `BottomNav`'s JSX, which is already wrapped in `<div className="hide-desktop">` in the layout — so it's automatically hidden on desktop.
+
+---
+
+#### 34.4 — Deploy and test
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Test in Chrome DevTools mobile emulation (375px):
+   - Bottom nav shows All Tasks, Today, Habits, Browse — four tabs only
+   - Tapping Browse opens the Browse screen with all four sections visible
+   - Search returns results and tapping a result opens the task detail
+   - Tapping Upcoming navigates to the Upcoming view
+   - Theme picker changes the theme correctly
+   - Tapping a project navigates to that project's tasks
+   - Tapping `+` in projects opens the add-project flow
+3. Test on desktop — confirm sidebar and existing nav are completely unchanged.
+4. Commit: `git commit -m "Phase 34 — mobile nav redesign: Browse tab with search, upcoming, themes, projects"`
+5. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** `npm run build` passed with zero TypeScript errors. Committed and pushed to GitHub.
+
+---
+
+### Success Criteria
+- Mobile bottom nav has exactly four tabs: All Tasks, Today, Habits, Browse.
+- Upcoming is no longer a bottom tab but is reachable via Browse → Upcoming row.
+- Browse screen contains: search bar, Upcoming row, theme picker, and projects list with `+` button.
+- Tapping a project in Browse navigates to that project's task list.
+- Search in Browse returns results and allows navigation to tasks.
+- Desktop layout is completely unchanged.
+
+---
+
+*End of Build Plan — 34 Active Phases + 2 Future Stages*
