@@ -16,13 +16,15 @@ type TokenRange = {
   type: TokenType;
 };
 
+// Background-only styles — no color change so span text renders at identical width to plain text.
+// This prevents cursor drift in the textarea overlay technique.
 const TOKEN_STYLES: Record<TokenType, string> = {
-  project:  'background:#FFEED9;color:#B45309;border-radius:4px;padding:0 2px;',
-  date:     'background:#E8F4FD;color:#1D6FA4;border-radius:4px;padding:0 2px;',
-  duration: 'background:#F0F0F0;color:#555555;border-radius:4px;padding:0 2px;',
-  p1:       'background:#FDECEA;color:#DB4035;border-radius:4px;padding:0 2px;',
-  p2:       'background:#FFF3E0;color:#D97706;border-radius:4px;padding:0 2px;',
-  p3:       'background:#F5F5F5;color:#888888;border-radius:4px;padding:0 2px;',
+  project:  'background:rgba(217,119,6,0.15);border-radius:3px;padding:0 2px;',
+  date:     'background:rgba(59,130,246,0.12);border-radius:3px;padding:0 2px;',
+  duration: 'background:rgba(45,106,79,0.12);border-radius:3px;padding:0 2px;',
+  p1:       'background:rgba(220,38,38,0.10);border-radius:3px;padding:0 2px;',
+  p2:       'background:rgba(220,38,38,0.10);border-radius:3px;padding:0 2px;',
+  p3:       'background:rgba(220,38,38,0.10);border-radius:3px;padding:0 2px;',
 };
 
 function escapeHTML(str: string): string {

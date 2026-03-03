@@ -164,7 +164,7 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
     >
       {/* Task name with inline token highlighting */}
       <div style={{ padding: '12px 14px 4px', position: 'relative' }}>
-        {/* Mirror div — shows highlighted HTML behind the transparent input */}
+        {/* Mirror div — sits behind the textarea; text is transparent so only background-pill spans show through */}
         {name && (
           <div
             aria-hidden="true"
@@ -182,7 +182,7 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
               whiteSpace: 'pre',
               overflow: 'hidden',
               pointerEvents: 'none',
-              color: 'var(--text-primary)',
+              color: 'transparent',
               userSelect: 'none',
             }}
           />
@@ -209,8 +209,8 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
             margin: 0,
             resize: 'none',
             overflow: 'hidden',
-            // When there's content, hide the text so the mirror shows through
-            color: name ? 'transparent' : 'var(--text-primary)',
+            // Text always visible — mirror div uses transparent color, only background pills show through
+            color: 'var(--text-primary)',
             caretColor: 'var(--text-primary)',
           }}
         />

@@ -59,6 +59,7 @@ export default function HabitsPage() {
   const [newUnit, setNewUnit] = useState('');
   const [habitError, setHabitError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'today' | 'calendar'>('today');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const today = todayISO();
 
@@ -107,6 +108,17 @@ export default function HabitsPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Cancel inline delete confirmation if user clicks elsewhere
+  useEffect(() => {
+    if (!confirmDeleteId) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-confirm-delete]')) setConfirmDeleteId(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [confirmDeleteId]);
 
   const refreshStreaks = useCallback(async (currentHabitCount: number) => {
     try {
@@ -212,7 +224,6 @@ export default function HabitsPage() {
   };
 
   const deleteHabit = async (id: string) => {
-    if (!confirm('Delete this habit? Historical logs will be kept.')) return;
     try {
       const { error } = await supabase.from('habits').delete().eq('id', id);
       if (error) { console.error('Failed to delete habit:', error); return; }
@@ -222,6 +233,7 @@ export default function HabitsPage() {
         next.delete(id);
         return next;
       });
+      setConfirmDeleteId(null);
     } catch (err) {
       console.error('Unexpected error deleting habit:', err);
     }
@@ -786,15 +798,32 @@ export default function HabitsPage() {
                                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 8 }}>
                                   {TRACKING_TYPES.find((t) => t.value === habit.trackingType)?.label ?? habit.trackingType}
                                 </span>
-                                <button
-                                  onClick={() => deleteHabit(habit.id)}
-                                  style={{ color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16 }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-overdue)')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                                  aria-label="Delete habit"
-                                >
-                                  ×
-                                </button>
+                                {confirmDeleteId === habit.id ? (
+                                  <span data-confirm-delete style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <button
+                                      onClick={() => deleteHabit(habit.id)}
+                                      style={{ fontSize: 12, color: 'var(--text-overdue)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
+                                    >
+                                      Delete
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmDeleteId(null)}
+                                      style={{ fontSize: 12, color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => setConfirmDeleteId(habit.id)}
+                                    style={{ color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16 }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-overdue)')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                    aria-label="Delete habit"
+                                  >
+                                    ×
+                                  </button>
+                                )}
                               </div>
                             )}
                           </Draggable>

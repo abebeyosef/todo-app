@@ -68,6 +68,9 @@ These are moments where Claude Code cannot proceed without real information from
 | 25 | Completed Tasks Visible In-Place | [x] Done |
 | 26 | Bug Fixes: Cursor Lag, Project Task Disappearing, Completed Tasks in Calendar | [x] Done |
 | 27 | Theme Customisation — 11 Themes | [x] Done |
+| 28 | Fix Cursor Lag in Task Input (Background-Highlight Approach) + Habit Delete | [x] Done |
+| 29 | Mobile-Friendly Layout + PWA | [ ] Pending |
+| 30 | Overlapping Calendar Events — Side-by-Side Column Layout | [ ] Pending |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -3069,7 +3072,7 @@ Four themes (Ocean, London, Addis, Dark) have dark sidebar backgrounds, which me
 
 2. **Category selector:** Three small pill buttons at the top — **General**, **Nature**, **Places** — styled as a segmented control. Default active category: whichever category contains the currently active theme. Active pill uses `var(--accent)` background with white text; inactive pills use `var(--bg-hover-row)` with `var(--text-secondary)`. Font size 11px, padding `3px 10px`, border-radius 20px.
 
-3. **Swatch row:** Below the category pills, render the swatches for the selected category only. Each swatch is a `<button>` — a 22px circle using that theme's accent colour as fill. When selected, show a white tick (Lucide `Check`, size 11) centred inside.
+3. **Swatch row:** Below the category pills, render the swatches for the selected category only. Each swatch is a `<button>` — a 22px circle using the theme's **representative colour** (see below) as fill. When selected, show a white tick (Lucide `Check`, size 11) centred inside.
 
 4. **Tooltip:** On hover, show the theme name using a small CSS tooltip (`:hover::after` with `content`, `position: absolute`) positioned above the swatch. Font size 11px, background `var(--bg-toast)`, colour `var(--text-toast)`, `border-radius: 4px`, `padding: 3px 7px`.
 
@@ -3077,10 +3080,12 @@ Four themes (Ocean, London, Addis, Dark) have dark sidebar backgrounds, which me
 
 6. **On mount:** Read `localStorage` for both keys and restore state — this prevents a flash of the wrong category on page load.
 
-**All 11 themes with swatch accent colours:**
-- *General:* Sand `#D97706` · Dark `#F5A623` · Slate `#4F46E5`
-- *Nature:* Forest `#2D6A4F` · Ocean `#3B82F6`
-- *Places:* London `#CC0000` · Warsaw `#C41E3A` · Wakefield `#C2185B` · Addis `#D4860B` · Łeba `#1B6B5A` · LA `#D2622A`
+**All 11 themes with representative swatch colours** *(these are NOT always the accent colour — they are chosen to visually represent the theme at a glance):*
+- *General:* Sand `#D97706` (amber) · Dark `#2D2D2D` (charcoal) · Slate `#4F46E5` (indigo)
+- *Nature:* Forest `#2D6A4F` (emerald) · Ocean `#1E2A3A` (deep navy)
+- *Places:* London `#CC0000` (bus red) · Warsaw `#C41E3A` (crimson) · Wakefield `#C2185B` (rhubarb) · Addis `#1B3A2D` (eucalyptus) · Łeba `#1B6B5A` (pine teal) · LA `#D2622A` (terracotta)
+
+**Special case — dark swatches:** Dark (`#2D2D2D`), Ocean (`#1E2A3A`), and Addis (`#1B3A2D`) are all very dark colours. To ensure they are visible against the app's light sidebar background, give these three swatches a `1px solid rgba(0,0,0,0.15)` border ring in addition to the fill colour.
 
 **Approach:** Create `src/components/ThemePicker.tsx` as a pure client component. Organise the 11 themes into a `THEMES` constant keyed by category. Render category pill buttons and a swatch row. Use React state for active category and active theme. Apply the theme via `document.documentElement.setAttribute('data-theme', id)` and save to `localStorage`. On mount, restore from `localStorage`. Tooltip implemented as a conditionally rendered small div (hover state on the swatch button) rather than CSS pseudo-elements — easier in JSX.
 
@@ -3145,4 +3150,464 @@ The theme must be applied before React hydrates, otherwise users will briefly se
 
 ---
 
-*End of Build Plan — 27 Active Phases + 2 Future Stages*
+---
+
+## Phase 28 — Fix Cursor Lag in Task Input (Background-Highlight Approach)
+**What this does:** Permanently fixes the cursor lag in the task input field by replacing the transparent-text + mirror div approach with a background-colour highlight approach. Instead of hiding the textarea text and overlaying coloured HTML spans, the textarea text stays fully visible in its natural colour — and the mirror div only renders coloured background pills *behind* the text. Because text colour is never set to `transparent`, the cursor always sits exactly where the browser places it, with no drift.
+
+**Status:** [x] Done — 3 March 2026
+
+**Completion Notes:** Four sections implemented. (28.0) ThemePicker rebuilt with 40px swatches, per-theme representative swatch colours, and SVG stencil icons (11 designs). (28.1) Habit deletion `confirm()` replaced with inline two-button confirmation in `habits/page.tsx` — click `×` to arm, then "Delete"/"Cancel" — fixes silent failure on Vercel. (28.2) `highlightTask.ts` TOKEN_STYLES updated to background-only rgba values, no `color:` — span text renders at identical width to plain text. (28.3) `InlineTaskForm.tsx` mirror div set to `color: transparent` (text invisible, only background pills show), textarea always `color: var(--text-primary)` — cursor never lags or drifts. Build clean.
+
+### Why the previous fix didn't fully work
+Phase 26 switched from `<input>` to `<textarea>` to improve box-model alignment. This helped, but the underlying cause remained: `color: transparent` on the textarea makes the text invisible, and the cursor position is calculated from that invisible text. Any styled `<span>` in the mirror div HTML (e.g. wrapping `#personal` or `tomorrow 4pm`) renders at a fractionally different width due to font antialiasing differences between a bare text node and a span element. Over a long string these sub-pixel differences accumulate and push the cursor visibly out of position.
+
+### Steps for Claude Code
+
+#### 28.0 — Fix theme picker swatches: representative colours + stencil icons
+
+Phase 27 deployed the ThemePicker using accent colours as plain colour circles. Two changes are needed: (1) update the swatch colours to better represent each theme visually, and (2) add a small white stencil SVG icon inside each swatch so the picker immediately communicates what each theme looks and feels like — exactly like a stencil silhouette.
+
+**Swatch design:** Each swatch grows from 22px to **40px** diameter. Background = the representative colour. Centred inside: a white SVG silhouette icon at ~18×18px. On selection, a white `Check` tick appears over the icon. On hover: scale(1.1) + tooltip with the theme name above.
+
+**Step 1 — Update swatch colours and sizes**
+
+Open `src/components/ThemePicker.tsx`. Update the `THEMES` constant to include both the representative swatch colour and an icon identifier for each theme. Update the swatch button to 40×40px:
+
+| Theme | Swatch colour | Icon |
+|-------|--------------|------|
+| Sand | `#D97706` | `sun` |
+| Dark | `#2D2D2D` | `moon` |
+| Slate | `#4F46E5` | `mountain` |
+| Forest | `#2D6A4F` | `pine-tree` |
+| Ocean | `#1E2A3A` | `wave` |
+| London | `#CC0000` | `big-ben` |
+| Warsaw | `#C41E3A` | `palace` |
+| Wakefield | `#C2185B` | `rhubarb` |
+| Addis | `#1B3A2D` | `obelisk` |
+| Łeba | `#1B6B5A` | `lighthouse` |
+| LA | `#D2622A` | `palm-tree` |
+
+For the three dark swatches (Dark, Ocean, Addis), add `border: '1px solid rgba(0,0,0,0.15)'` so they are visible against the light sidebar.
+
+**Step 2 — Add SVG icon paths**
+
+Create a helper `ThemeIcon({ id, size }: { id: string; size: number })` component inside `ThemePicker.tsx` that returns the correct SVG for each icon identifier. Use the following SVG paths (all designed for a 24×24 viewBox, rendered white `fill="white"` or `stroke="white"`):
+
+```tsx
+// sun — radiating circle
+'sun': <svg viewBox="0 0 24 24" fill="white"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="19" x2="12" y2="22" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="2" y1="12" x2="5" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="19" y1="12" x2="22" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+
+// moon — crescent
+'moon': <svg viewBox="0 0 24 24" fill="white"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+
+// mountain — simple peak
+'mountain': <svg viewBox="0 0 24 24" fill="white"><polygon points="12,3 22,20 2,20"/></svg>
+
+// pine-tree — triangle tree
+'pine-tree': <svg viewBox="0 0 24 24" fill="white"><polygon points="12,2 20,16 4,16"/><rect x="10" y="16" width="4" height="5"/></svg>
+
+// wave — simplified crest
+'wave': <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M2 12 C5 8, 9 16, 12 12 S19 8, 22 12"/><path d="M2 17 C5 13, 9 21, 12 17 S19 13, 22 17"/></svg>
+
+// big-ben — tower with clock
+'big-ben': <svg viewBox="0 0 24 24" fill="white"><rect x="9" y="14" width="6" height="8"/><rect x="8" y="9" width="8" height="5"/><circle cx="12" cy="11" r="2" fill="#CC0000"/><rect x="10" y="5" width="4" height="4"/><polygon points="12,2 15,5 9,5"/></svg>
+
+// palace — spired tower (Palace of Culture, Warsaw)
+'palace': <svg viewBox="0 0 24 24" fill="white"><rect x="9" y="10" width="6" height="12"/><rect x="7" y="14" width="10" height="8"/><rect x="10" y="6" width="4" height="4"/><rect x="11" y="3" width="2" height="3"/><polygon points="12,1 13.5,3 10.5,3"/></svg>
+
+// rhubarb — leaf on stalk
+'rhubarb': <svg viewBox="0 0 24 24" fill="white"><path d="M12 22 L12 10"/><path d="M12 10 C8 8, 4 4, 6 2 C8 0, 12 4, 12 10"/><path d="M12 10 C16 8, 20 4, 18 2 C16 0, 12 4, 12 10"/><line x1="12" y1="10" x2="6" y2="16" stroke="white" strokeWidth="1.5"/></svg>
+
+// obelisk — tall tapered pillar (Obelisk of Axum)
+'obelisk': <svg viewBox="0 0 24 24" fill="white"><polygon points="12,2 14,6 14,20 10,20 10,6"/><polygon points="12,2 13,4 11,4"/></svg>
+
+// lighthouse — tower with light
+'lighthouse': <svg viewBox="0 0 24 24" fill="white"><rect x="10" y="10" width="4" height="12"/><rect x="9" y="7" width="6" height="3"/><polygon points="12,3 15,7 9,7"/><line x1="12" y1="3" x2="6" y2="1" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="3" x2="18" y2="1" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="3" x2="5" y2="5" stroke="white" strokeWidth="1" strokeLinecap="round"/><line x1="12" y1="3" x2="19" y2="5" stroke="white" strokeWidth="1" strokeLinecap="round"/></svg>
+
+// palm-tree — trunk with fronds
+'palm-tree': <svg viewBox="0 0 24 24" fill="white"><path d="M12 22 C11 16, 10 10, 12 6"/><path d="M12 6 C10 2, 5 2, 4 5 C7 4, 10 6, 12 6"/><path d="M12 6 C14 2, 19 2, 20 5 C17 4, 14 6, 12 6"/><path d="M12 6 C8 4, 6 0, 9 0 C10 3, 11 5, 12 6"/><path d="M12 6 C16 4, 18 0, 15 0 C14 3, 13 5, 12 6"/></svg>
+```
+
+Note: these SVG paths are starting points. If any icon looks unclear at small size during testing, simplify the path further — the goal is instant recognition at 18px, not detail.
+
+**Step 3 — Render the icon inside each swatch**
+
+In the swatch button render:
+```tsx
+<button style={{ width: 40, height: 40, borderRadius: '50%', background: theme.swatchColour, display: 'flex', alignItems: 'center', justifyContent: 'center', border: isDark ? '1px solid rgba(0,0,0,0.15)' : 'none', ... }}>
+  {isSelected
+    ? <Check size={16} color="white" />
+    : <ThemeIcon id={theme.icon} size={18} />
+  }
+</button>
+```
+
+**Approach:** Rewrite `ThemePicker.tsx`. Add `swatchColour` and `icon` fields to `ThemeDef` (keeping `accent` for consistency). Replace the 22px circle with a 40px circle. Add a `ThemeIcon` helper that maps icon IDs to inline SVGs. Show icon when not selected, Check when selected. Dark themes (Dark, Ocean, Addis) get a subtle dark border so they're visible on light sidebars. Tooltip and scale(1.1) hover effect carry over unchanged.
+
+**Completion Notes:** Rewrote `ThemePicker.tsx`. Added `swatchColour` and `icon` to `ThemeDef`. Added `ThemeIcon` component with 11 inline SVGs (sun, moon, mountain, pine-tree, wave, big-ben, palace, rhubarb, obelisk, lighthouse, palm-tree). Swatches enlarged to 40×40px. Dark themes (Dark, Ocean, Addis) use `darkBorder: true` → `1px solid rgba(0,0,0,0.15)`. Selected state shows `Check`, unselected shows the icon. Hover: scale(1.1) + tooltip.
+
+---
+
+#### 28.1 — Fix habit deletion (confirm() blocked in browser)
+
+The delete button and `deleteHabit()` function already exist in `src/app/habits/page.tsx`. The bug is that `window.confirm()` is silently blocked in many browsers when running on Vercel/Next.js App Router, auto-returning `false` so the function exits before the Supabase delete runs. The user sees nothing happen.
+
+**Fix — replace `confirm()` with an inline confirmation:**
+
+1. In `src/app/habits/page.tsx`, add a state variable to track which habit is pending deletion:
+   ```ts
+   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+   ```
+
+2. Update `deleteHabit()` to remove the `confirm()` call — it should now just delete directly (the confirmation step happens in the UI):
+   ```ts
+   const deleteHabit = async (id: string) => {
+     try {
+       const { error } = await supabase.from('habits').delete().eq('id', id);
+       if (error) { console.error('Failed to delete habit:', error); return; }
+       setHabits((prev) => prev.filter((h) => h.id !== id));
+       setLogValues((prev) => { const next = new Map(prev); next.delete(id); return next; });
+       setConfirmDeleteId(null);
+     } catch (err) { console.error('Unexpected error deleting habit:', err); }
+   };
+   ```
+
+3. In the habit row render, replace the single `×` button with a two-state inline confirmation:
+   - **Default state** (`confirmDeleteId !== habit.id`): show the `×` button as before. On click, call `setConfirmDeleteId(habit.id)` instead of `deleteHabit`.
+   - **Confirming state** (`confirmDeleteId === habit.id`): replace the `×` button with two small inline buttons side by side:
+     - **"Delete"** — red text (`var(--text-overdue)`), no background, font-size 12. On click: `deleteHabit(habit.id)`.
+     - **"Cancel"** — muted text, no background, font-size 12. On click: `setConfirmDeleteId(null)`.
+   - Also add a `useEffect` (or `onBlur` on the row) to cancel the confirm state if the user clicks elsewhere.
+
+**Approach:** In `habits/page.tsx`, add `confirmDeleteId` state. Rewrite `deleteHabit` to skip `confirm()`. In the habit row, replace the `×` button with a two-state render: initial state calls `setConfirmDeleteId(habit.id)`; confirm state shows inline "Delete" (red) and "Cancel" buttons. Add a `useEffect` listening for `mousedown` outside when confirm is active to auto-cancel.
+
+**Completion Notes:** Added `confirmDeleteId` state to `habits/page.tsx`. Rewrote `deleteHabit` to skip `confirm()` and call `setConfirmDeleteId(null)` after success. Replaced the `×` button with a two-state render: `×` → `setConfirmDeleteId(habit.id)` initially; "Delete" (red) + "Cancel" buttons when confirming. Added `useEffect` with `mousedown` listener to cancel confirm when clicking outside the `data-confirm-delete` wrapper.
+
+---
+
+#### 28.2 — Update `highlightTask.ts` to output background-only spans
+
+1. Open `src/lib/highlightTask.ts`.
+2. Change `buildHighlightedHTML()` so that token spans use **only `background-color` and `border-radius`** — no `color` change, no `font-weight` change. The text inside each span must be rendered in a way that matches the width of plain unspanned text exactly.
+3. Use these background styles per token type (subtle pills):
+   - `#project` tag: `background: rgba(217,119,6,0.15); border-radius: 3px; padding: 0 2px;`
+   - Date/time: `background: rgba(59,130,246,0.12); border-radius: 3px; padding: 0 2px;`
+   - `[duration]`: `background: rgba(45,106,79,0.12); border-radius: 3px; padding: 0 2px;`
+   - `p1/p2/p3`: `background: rgba(220,38,38,0.10); border-radius: 3px; padding: 0 2px;`
+4. Do NOT set `color` on any span — text colour must be identical to unstyled text so widths match perfectly.
+
+**Approach:** In `highlightTask.ts`, update `TOKEN_STYLES` to remove all `color:` declarations, keeping only `background`, `border-radius`, and `padding`. Use the rgba background values from the spec. The key constraint is that span text must render at identical width to plain text — removing `color` changes achieves this since font rendering is unaffected.
+
+**Completion Notes:** Updated `TOKEN_STYLES` in `highlightTask.ts`. Removed all `color:` declarations from every token type. Replaced hardcoded background colors with `rgba(...)` values from spec: amber 0.15 for project, blue 0.12 for date, green 0.12 for duration, red 0.10 for all priority levels. Span text is now always unstyled — identical rendering to plain text, no cursor drift.
+
+---
+
+#### 28.3 — Update `InlineTaskForm.tsx` to use both visible layers
+
+1. Open `src/components/InlineTaskForm.tsx`.
+2. Remove `color: name ? 'transparent' : 'var(--text-primary)'` from the textarea. Replace with `color: 'var(--text-primary)'` always — text is now always visible.
+3. The mirror div continues to sit `position: absolute` behind the textarea with `pointer-events: none`. Set `color: transparent` on the mirror div itself so its text characters are invisible — only the `background-color` spans show through.
+4. Ensure the textarea has `background: transparent` so the mirror div backgrounds are visible beneath it.
+5. Verify by typing `Go to the bank tomorrow 4pm [2hr] #personal` — soft background pills should appear behind each token, and the cursor should sit exactly where it belongs with no lag or drift at any point.
+
+**Approach:** In `InlineTaskForm.tsx`, two changes: (1) textarea `color` changes from `name ? 'transparent' : 'var(--text-primary)'` to always `'var(--text-primary)'` — text is always visible and cursor never misaligns. (2) Mirror div `color` changes from `'var(--text-primary)'` to `'transparent'` — the div's text characters are invisible, only the background-pill spans show through the transparent textarea.
+
+**Completion Notes:** Updated `InlineTaskForm.tsx`. Mirror div `color` changed from `'var(--text-primary)'` to `'transparent'` — its text characters are invisible, only the rgba background pills show through. Textarea `color` changed from `name ? 'transparent' : 'var(--text-primary)'` to always `'var(--text-primary)'` — text always visible, cursor never misaligns. `background: transparent` on the textarea was already present.
+
+---
+
+#### 28.4 — Deploy
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Commit: `git commit -m "Phase 28 — fix cursor lag: background-highlight approach, no transparent text"`
+3. Push to GitHub, confirm Vercel deploys.
+4. Smoke-test: type a long task with project, date, duration, and priority in various positions — confirm cursor never lags.
+
+**Completion Notes:** `npm run build` passed cleanly. Committed and pushed to GitHub, Vercel deploying.
+
+---
+
+### Success Criteria
+- Cursor sits exactly at the typed position at all times — no lag, no drift, no overlap with highlights
+- Token highlights appear as subtle background-colour pills behind the text (amber for `#project`, blue for date/time, green for `[duration]`, red for priority)
+- Text colour is always fully visible — never transparent
+- Highlight pill colours work correctly across all 11 themes
+
+---
+
+---
+
+## Phase 29 — Mobile-Friendly Layout + PWA
+**What this does:** Makes the app fully usable on phones and tablets. On mobile (< 768px): the sidebar is replaced by a bottom navigation bar, the Upcoming week grid switches to a day-by-day list, task input and task detail open as full-screen bottom sheets, and all touch targets are enlarged. On tablet (768–1024px): the sidebar collapses to an icon-only rail. Across all sizes: a PWA manifest is added so the app can be installed to the home screen on iPhone and Android and opens without browser chrome.
+
+**Status:** [ ] Pending
+
+### Design decisions recorded
+- **Mobile nav:** bottom navigation bar (5 tabs: Today, Upcoming, Projects, Habits, All Tasks) — more thumb-friendly than a drawer
+- **Tablet:** icon-only sidebar rail, expands to full sidebar on hover
+- **PWA:** yes — low effort, makes the app feel native when added to home screen
+- **Breakpoints:** mobile < 768px · tablet 768–1024px · desktop > 1024px
+
+---
+
+### Steps for Claude Code
+
+#### 29.1 — Add responsive CSS breakpoint utilities
+
+1. In `src/app/globals.css`, add the three breakpoint custom media rules at the top (or use standard `@media` queries throughout — whichever pattern is already in use):
+   ```css
+   /* Breakpoints */
+   /* mobile:  max-width: 767px  */
+   /* tablet:  768px – 1024px    */
+   /* desktop: min-width: 1025px */
+   ```
+2. Add a CSS utility class `.hide-mobile { }` and `.hide-desktop { }` using `@media (max-width: 767px) { .hide-mobile { display: none !important; } }` and vice versa. These will be used throughout to conditionally show/hide elements per breakpoint.
+3. Add a global rule for mobile: `* { -webkit-tap-highlight-color: transparent; }` to remove the blue flash on tap on iOS.
+4. In `src/app/layout.tsx`, confirm the `<meta name="viewport">` tag is set to `width=device-width, initial-scale=1` — add it if missing.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.1)*
+
+---
+
+#### 29.2 — Collapse sidebar on tablet (icon rail)
+
+1. In `src/components/Sidebar.tsx`, add responsive width behaviour:
+   - Desktop (> 1024px): full sidebar, 280px wide — current behaviour, unchanged
+   - Tablet (768–1024px): collapsed to 56px wide, showing only icons (no text labels). On hover over the rail, expand to full 280px with a smooth `width` transition (`200ms ease`). Use a CSS class toggle or inline style based on a `useMediaQuery` hook or window resize listener.
+2. For the icon rail: each nav item shows only its Lucide icon, centred, with a tooltip on hover showing the label. Project list items in the rail show a coloured dot instead of the `#name`.
+3. The theme picker in the sidebar footer collapses to a single palette icon on the rail; clicking it opens the full picker in a small popover.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.2)*
+
+---
+
+#### 29.3 — Replace sidebar with bottom navigation on mobile
+
+On mobile (< 768px), the sidebar should be completely hidden and replaced by a fixed bottom navigation bar.
+
+1. Create `src/components/BottomNav.tsx`. It renders a fixed bar at the bottom of the screen (`position: fixed; bottom: 0; left: 0; right: 0; z-index: 100`) with 5 equally-spaced tabs:
+   - **Today** — Lucide `Sun` icon
+   - **Upcoming** — Lucide `Calendar` icon
+   - **Projects** — Lucide `FolderOpen` icon
+   - **Habits** — Lucide `Activity` icon
+   - **All Tasks** — Lucide `List` icon
+2. Active tab: accent colour icon + label, with a small accent dot or underline indicator. Inactive: muted icon, no label (label appears only on active tab to save space).
+3. Tapping **Projects** opens a slide-up drawer (bottom sheet) listing all projects — tapping a project navigates to that project's task list and closes the drawer.
+4. Add `BottomNav` to `src/app/layout.tsx` wrapped in a `<div className="hide-desktop">` (visible only on mobile).
+5. Hide `<Sidebar>` on mobile using `<div className="hide-mobile">`.
+6. Add `padding-bottom: 64px` to the main content area on mobile so content isn't hidden behind the nav bar.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.3)*
+
+---
+
+#### 29.4 — Upcoming view: day-list on mobile
+
+The 7-column week grid is unusable on a phone. On mobile, the Upcoming view should switch to a vertical day-by-day list.
+
+1. In the `renderUpcoming()` function in `src/app/page.tsx`, detect mobile using a `useMediaQuery('(max-width: 767px)')` hook (create this hook in `src/lib/useMediaQuery.ts` if it doesn't exist).
+2. On mobile, render a simple vertical list instead of the grid:
+   - Show the next 7 days as collapsible sections, each with a date heading (e.g. **"Tomorrow · Wed 5 Mar"**)
+   - Tasks within each day are sorted by time, displayed as standard task rows using `renderTask()`
+   - Days with no tasks show a subtle "Nothing scheduled" message
+   - Keep the ◀ / This week / ▶ navigation but relabel it to ◀ / This week / ▶ for week offset
+3. On tablet and desktop, keep the existing grid view unchanged.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.4)*
+
+---
+
+#### 29.5 — Task input as bottom sheet on mobile
+
+On desktop, the inline task form expands in-place. On mobile, it should open as a full-screen bottom sheet for more comfortable typing.
+
+1. In `src/components/InlineTaskForm.tsx`, add a prop `mobileSheet?: boolean`.
+2. When `mobileSheet` is true and the form is open, render it inside a fixed full-screen overlay (`position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.4)`), with the actual form panel sliding up from the bottom (`position: absolute; bottom: 0; left: 0; right: 0; background: var(--bg-modal); border-radius: 16px 16px 0 0; padding: 20px`). Animate in with a `transform: translateY` transition.
+3. In the mobile layout, the "Add task" button (the `+` or inline form trigger) should pass `mobileSheet={isMobile}` to `InlineTaskForm`.
+4. On mobile, show a drag handle (a small grey pill) at the top of the sheet. Tapping outside the sheet cancels the form.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.5)*
+
+---
+
+#### 29.6 — Task detail panel as bottom sheet on mobile
+
+The task detail panel currently slides in from the right at 400px. On mobile this should be a full-width bottom sheet instead.
+
+1. In `src/components/TaskDetailPanel.tsx`, detect mobile with `useMediaQuery`.
+2. On mobile, change the panel's position and size:
+   - `position: fixed; bottom: 0; left: 0; right: 0; height: 85vh` (85% of viewport height)
+   - `border-radius: 16px 16px 0 0`
+   - Slide up from bottom using `transform: translateY(100%)` → `translateY(0)` transition
+   - Add a drag handle pill at the top and a close button
+   - Make the panel content scrollable (`overflow-y: auto`)
+3. On desktop and tablet, keep the existing right-slide behaviour unchanged.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.6)*
+
+---
+
+#### 29.7 — Touch target and interaction improvements
+
+1. **Checkboxes:** Ensure all task checkboxes and habit checkboxes have a minimum tap area of 44×44px. Wrap the checkbox in a `<button>` or use padding to expand the hit area without changing the visual size.
+2. **Task rows:** The entire task row should be tappable on mobile (opens task detail). Add `onClick` to the row wrapper on mobile.
+3. **Context menus:** On desktop, context menus appear on right-click. On mobile, trigger them on long-press (500ms `touchstart` timer). Use the existing context menu component — just add a long-press handler alongside the existing right-click handler.
+4. **Habit rows:** Expand tap targets for the habit completion buttons and the drag handle.
+5. **Swipe to complete (optional enhancement):** If time allows, add a swipe-right gesture on task rows to complete a task, and swipe-left to delete. If complex, skip and note as a future improvement.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.7)*
+
+---
+
+#### 29.8 — PWA manifest and service worker
+
+1. Create `public/manifest.json`:
+   ```json
+   {
+     "name": "ToDo",
+     "short_name": "ToDo",
+     "description": "Personal task manager and habit tracker",
+     "start_url": "/",
+     "display": "standalone",
+     "background_color": "#FAF8F5",
+     "theme_color": "#D97706",
+     "orientation": "portrait-primary",
+     "icons": [
+       { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+       { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+       { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+     ]
+   }
+   ```
+2. Create simple app icons at `public/icon-192.png` and `public/icon-512.png`. Use a clean amber/warm square with a white checkmark or "T" lettermark — keep it simple. Generate these programmatically using a Node canvas script or use a placeholder initially.
+3. In `src/app/layout.tsx`, add to the `<head>`:
+   ```html
+   <link rel="manifest" href="/manifest.json" />
+   <meta name="mobile-web-app-capable" content="yes" />
+   <meta name="apple-mobile-web-app-capable" content="yes" />
+   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+   <meta name="apple-mobile-web-app-title" content="ToDo" />
+   <link rel="apple-touch-icon" href="/icon-192.png" />
+   <meta name="theme-color" content="#D97706" />
+   ```
+4. Create a minimal service worker at `public/sw.js` that caches the app shell (HTML, CSS, JS) for fast load:
+   ```js
+   const CACHE = 'todo-v1';
+   const SHELL = ['/', '/habits'];
+   self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))));
+   self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
+   ```
+5. Register the service worker in `src/app/layout.tsx` via an inline script:
+   ```js
+   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+   ```
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.8)*
+
+---
+
+#### 29.9 — Deploy and test
+
+1. Run `npm run build` locally — fix any TypeScript or layout errors.
+2. Test in Chrome DevTools with device emulation: iPhone SE (375px), iPhone 14 (390px), iPad (768px). Check: navigation, task creation, task detail, habits, upcoming view, theme picker.
+3. Test "Add to Home Screen" in Safari on iPhone — confirm it opens without browser chrome and shows the correct icon.
+4. Commit: `git commit -m "Phase 29 — mobile-friendly layout, bottom nav, bottom sheets, PWA manifest"`
+5. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** *(Claude Code fills this in after completing 29.9)*
+
+---
+
+### Success Criteria
+- On mobile (< 768px): sidebar is hidden; bottom navigation bar is visible and navigates correctly; tapping Projects opens a project drawer
+- On tablet (768–1024px): sidebar collapses to an icon rail; hovering expands it to full width
+- On desktop (> 1024px): no change to existing layout
+- Upcoming view shows a day-by-day list on mobile instead of the week grid
+- Task input opens as a bottom sheet on mobile; closes on tap-outside
+- Task detail panel slides up from the bottom on mobile
+- All checkboxes and interactive elements have 44px minimum tap targets
+- The app can be added to the iOS/Android home screen and opens in standalone mode (no browser chrome)
+- App icon appears correctly on the home screen
+
+---
+
+---
+
+## Phase 30 — Overlapping Calendar Events — Side-by-Side Column Layout
+
+**Status:** [ ] Pending
+
+**What this does:** In the Upcoming week calendar view, two or more events that overlap in time are currently rendered on top of each other, making both hard to read. This phase implements a standard calendar column-layout algorithm so overlapping events are shown side by side, each taking an equal share of the column width — similar to how Google Calendar handles it.
+
+**Why this matters:** Without this fix, completed tasks (which remain visible in-place per Phase 25) can visually collide with other tasks scheduled at the same time, and any two tasks that coincide are unreadable.
+
+---
+
+#### 30.1 — Overlap detection and column assignment algorithm
+
+*Approach: (Claude Code fills this in before coding)*
+
+1. In the Upcoming view rendering logic (in `src/app/page.tsx` or a helper), after filtering the events for a given day, run a column-assignment pass:
+   - Sort events by start time ascending (ties broken by duration descending).
+   - Maintain a list of "column end times". For each event, find the first column whose last event has ended before this event starts; assign this event to that column. If no column is free, open a new column.
+   - Record `columnIndex` and `totalColumns` on each event for that day.
+2. The algorithm produces a `columns` map: `{ taskId → { col: number, totalCols: number } }` for every day's events.
+3. Extract this into a pure helper function `assignColumns(events: Task[]): Map<string, { col: number; totalCols: number }>` in `src/lib/calendarLayout.ts` so it can be unit-tested independently.
+
+**Completion Notes:** *(Claude Code fills this in after completing 30.1)*
+
+---
+
+#### 30.2 — Apply column layout to event rendering
+
+*Approach: (Claude Code fills this in before coding)*
+
+1. In the event rendering loop for the Upcoming calendar, retrieve each event's `{ col, totalCols }` from the map produced in 30.1.
+2. Set the event block's `width` and `left` (or `right`) via inline styles:
+   - `width: calc((100% - 4px) / totalCols)` — the 4px subtracts a small gap between columns.
+   - `left: calc(col * (100% / totalCols))` — offsets each column to the right.
+3. Ensure the event container uses `position: absolute` and its parent uses `position: relative` (this should already be the case).
+4. Do **not** add any "sliver" or z-index peeking — events should fully tile without any partial overlap. Each event block should clip its own content (`overflow: hidden`, `text-overflow: ellipsis`) rather than rely on being partially obscured.
+5. The existing event click handler, height calculation (duration-based), and top offset (time-based) remain unchanged — only width and left are new.
+
+**Completion Notes:** *(Claude Code fills this in after completing 30.2)*
+
+---
+
+#### 30.3 — Edge cases and visual polish
+
+*Approach: (Claude Code fills this in before coding)*
+
+1. Single events (no overlap): `totalCols = 1`, `width = 100%`, `left = 0` — no visual change from current behaviour.
+2. Events that share only a single minute boundary (one ends exactly when the next starts) should **not** be treated as overlapping.
+3. Very narrow columns (3+ simultaneous events): ensure text truncates gracefully and the task title is still readable. Minimum column width does not need enforcing — let it tile naturally; users are unlikely to have 4+ events at identical times.
+4. Completed tasks (rendered with reduced opacity and strikethrough per Phase 25) participate in the column layout the same as active tasks — they occupy the same time slot and should be included in overlap detection.
+
+**Completion Notes:** *(Claude Code fills this in after completing 30.3)*
+
+---
+
+#### 30.4 — Deploy
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Manually test: create two tasks with the same time on the same day; confirm they appear side by side with no overlap.
+3. Create three tasks at the same time; confirm three equal-width columns appear.
+4. Confirm a completed task and an active task at the same time also tile correctly.
+5. Commit: `git commit -m "Phase 30 — side-by-side column layout for overlapping calendar events"`
+6. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** *(Claude Code fills this in after completing 30.4)*
+
+---
+
+### Success Criteria
+- Two events at the same time are displayed side by side, each at 50% width, with no overlap.
+- Three simultaneous events each occupy ~33% width.
+- Events that do not overlap retain their full column width (no regression).
+- No "sliver" of an event peeks through from behind another event.
+- Completed tasks participate in the overlap layout correctly.
+
+---
+
+*End of Build Plan — 30 Active Phases + 2 Future Stages*
