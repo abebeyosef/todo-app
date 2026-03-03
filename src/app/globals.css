@@ -122,7 +122,7 @@
 /* ── Theme: Ocean ──────────────────────────────────────────────────────── */
 [data-theme="ocean"] {
   --bg-sidebar: #1E2A3A; --bg-main: #FFFFFF; --accent: #3B82F6;
-  --accent-dark: #2563EB; --accent-bg: #EFF6FF; --bg-active: #DBEAFE;
+  --accent-dark: #2563EB; --accent-bg: #EFF6FF; --bg-active: #1E3A5F;
   --bg-hover-sidebar: #263447; --bg-hover-row: #F0F7FF;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #DBEAFE;
   --text-primary: #0F172A; --text-secondary: #475569; --text-muted: #94A3B8;
@@ -132,6 +132,7 @@
   --checkbox-border: #CBD5E1;
   --date-overdue-bg: #FEE2E2; --date-future-bg: #EFF6FF;
   --sidebar-text: #E2E8F0; --sidebar-text-muted: #94A3B8;
+  --sidebar-active-text: #FFFFFF;
 }
 
 /* ── Theme: Forest ─────────────────────────────────────────────────────── */
@@ -167,7 +168,7 @@
 /* ── Theme: London ─────────────────────────────────────────────────────── */
 [data-theme="london"] {
   --bg-sidebar: #2D2D2D; --bg-main: #FAFAFA; --accent: #CC0000;
-  --accent-dark: #A30000; --accent-bg: #FDECEA; --bg-active: #FDECEA;
+  --accent-dark: #A30000; --accent-bg: #FDECEA; --bg-active: #4A1010;
   --bg-hover-sidebar: #383838; --bg-hover-row: #F5F5F5;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDECEA;
   --text-primary: #1A1A1A; --text-secondary: #555555; --text-muted: #888888;
@@ -177,6 +178,7 @@
   --checkbox-border: #CCCCCC;
   --date-overdue-bg: #FDECEA; --date-future-bg: #FFF3F3;
   --sidebar-text: #E8E8E8; --sidebar-text-muted: #AAAAAA;
+  --sidebar-active-text: #FFFFFF;
 }
 
 /* ── Theme: Warsaw ─────────────────────────────────────────────────────── */
@@ -212,7 +214,7 @@
 /* ── Theme: Addis ──────────────────────────────────────────────────────── */
 [data-theme="addis"] {
   --bg-sidebar: #1B3A2D; --bg-main: #FEFCF7; --accent: #D4860B;
-  --accent-dark: #A0620A; --accent-bg: #FDF3E3; --bg-active: #FDF3E3;
+  --accent-dark: #A0620A; --accent-bg: #FDF3E3; --bg-active: #243D2D;
   --bg-hover-sidebar: #24503D; --bg-hover-row: #FAF6EE;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDF3E3;
   --text-primary: #1A0F00; --text-secondary: #5C4020; --text-muted: #9A7A50;
@@ -222,6 +224,7 @@
   --checkbox-border: #D4C4A4;
   --date-overdue-bg: #FDE8E8; --date-future-bg: #FDF3E3;
   --sidebar-text: #D4EBD8; --sidebar-text-muted: #8AB898;
+  --sidebar-active-text: #FFFFFF;
 }
 
 /* ── Theme: Łeba ───────────────────────────────────────────────────────── */

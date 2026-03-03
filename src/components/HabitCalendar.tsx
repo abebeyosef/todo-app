@@ -11,12 +11,24 @@ type DayData = {
   habits: string[];
 };
 
+type HealthDay = {
+  sleep_hours: number | null;
+  mood_score: number | null;
+  water_litres: number | null;
+};
+
 function colourForPct(pct: number | null): string {
   if (pct === null || pct === 0) return 'var(--habit-grey)';
   if (pct < 0.2) return 'var(--habit-red)';
   if (pct < 0.6) return 'var(--habit-amber)';
   if (pct < 1) return 'var(--habit-lgreen)';
   return 'var(--habit-green)';
+}
+
+function moodColour(score: number): string {
+  if (score <= 2) return '#ef4444';
+  if (score === 3) return '#f59e0b';
+  return '#22c55e';
 }
 
 function daysInMonth(year: number, month: number): number {
@@ -35,6 +47,7 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [dayData, setDayData] = useState<Map<string, DayData>>(new Map());
+  const [healthData, setHealthData] = useState<Map<string, HealthDay>>(new Map());
   const [tooltip, setTooltip] = useState<{ date: string; data: DayData } | null>(null);
   const [popover, setPopover] = useState<{ date: string; data: DayData } | null>(null);
   const [streaks, setStreaks] = useState<{ current: number; best: number }>({ current: 0, best: 0 });
@@ -45,11 +58,18 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
     const lastDay = daysInMonth(year, month);
     const end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    const { data: logs } = await supabase
-      .from('habit_logs')
-      .select('habit_id, completed_on, habits(name)')
-      .gte('completed_on', start)
-      .lte('completed_on', end);
+    const [{ data: logs }, { data: healthLogs }] = await Promise.all([
+      supabase
+        .from('habit_logs')
+        .select('habit_id, completed_on, habits(name)')
+        .gte('completed_on', start)
+        .lte('completed_on', end),
+      supabase
+        .from('health_logs')
+        .select('logged_on, sleep_hours, mood_score, water_litres')
+        .gte('logged_on', start)
+        .lte('logged_on', end),
+    ]);
 
     const map = new Map<string, DayData>();
     for (const log of logs ?? []) {
@@ -62,6 +82,16 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
       if (habitName) entry.habits.push(habitName);
     }
     setDayData(map);
+
+    const hMap = new Map<string, HealthDay>();
+    for (const h of healthLogs ?? []) {
+      hMap.set(h.logged_on as string, {
+        sleep_hours: h.sleep_hours as number | null,
+        mood_score: h.mood_score as number | null,
+        water_litres: h.water_litres as number | null,
+      });
+    }
+    setHealthData(hMap);
   }, [year, month, habitCount]);
 
   const loadStreaks = useCallback(async () => {
@@ -209,10 +239,12 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
             const day = i + 1;
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const data = dayData.get(dateStr);
+            const health = healthData.get(dateStr);
             const pct = data && habitCount > 0 ? data.count / habitCount : null;
             const colour = colourForPct(pct);
             const isToday = dateStr === todayStr;
             const cellHeight = `calc((100vh - 280px) / ${numWeekRows})`;
+            const textOnColour = pct && pct >= 0.6;
 
             return (
               <div
@@ -240,13 +272,30 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
                     padding: 4,
                   }}
                 >
-                  <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 13, color: pct && pct >= 0.6 ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>
+                  <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 13, color: textOnColour ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>
                     {day}
                   </span>
                   {data && habitCount > 0 && (
-                    <span style={{ fontSize: 12, color: pct && pct >= 0.6 ? 'white' : 'var(--text-secondary)', marginTop: 12 }}>
+                    <span style={{ fontSize: 12, color: textOnColour ? 'white' : 'var(--text-secondary)', marginTop: 12 }}>
                       {data.count}/{habitCount}
                     </span>
+                  )}
+                  {health && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {health.sleep_hours != null && (
+                        <span style={{ fontSize: 10, color: textOnColour ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)', lineHeight: 1 }}>
+                          😴{health.sleep_hours}h
+                        </span>
+                      )}
+                      {health.mood_score != null && (
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: moodColour(health.mood_score), display: 'inline-block', flexShrink: 0 }} />
+                      )}
+                      {health.water_litres != null && (
+                        <span style={{ fontSize: 10, color: textOnColour ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)', lineHeight: 1 }}>
+                          💧{health.water_litres}L
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -274,6 +323,13 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
                     {popover.data.habits.map((h) => (
                       <p key={h} style={{ fontSize: 12, color: 'var(--text-muted)' }}>· {h}</p>
                     ))}
+                    {health && (health.sleep_hours != null || health.mood_score != null || health.water_litres != null) && (
+                      <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {health.sleep_hours != null && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>😴 {health.sleep_hours}h</span>}
+                        {health.mood_score != null && <span style={{ width: 8, height: 8, borderRadius: '50%', background: moodColour(health.mood_score), display: 'inline-block' }} />}
+                        {health.water_litres != null && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>💧 {health.water_litres}L</span>}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -320,6 +376,7 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
           const day = i + 1;
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const data = dayData.get(dateStr);
+          const health = healthData.get(dateStr);
           const pct = data && habitCount > 0 ? data.count / habitCount : null;
           const colour = colourForPct(pct);
           const isToday = dateStr === todayStr;
@@ -328,7 +385,7 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
             <div
               key={day}
               style={{ position: 'relative' }}
-              onMouseEnter={() => data && setTooltip({ date: dateStr, data })}
+              onMouseEnter={() => (data || health) && setTooltip({ date: dateStr, data: data ?? { date: dateStr, count: 0, total: habitCount, habits: [] } })}
               onMouseLeave={() => setTooltip(null)}
             >
               <div
@@ -371,10 +428,21 @@ export default function HabitCalendar({ habitCount, fullScreen }: Props) {
                     pointerEvents: 'none',
                   }}
                 >
-                  <p style={{ marginBottom: 4, fontWeight: 500 }}>{tooltip.data.count}/{habitCount} habits</p>
-                  {tooltip.data.habits.map((h) => (
-                    <p key={h} style={{ color: 'rgba(255,255,255,0.7)' }}>· {h}</p>
-                  ))}
+                  {tooltip.data.count > 0 && (
+                    <>
+                      <p style={{ marginBottom: 4, fontWeight: 500 }}>{tooltip.data.count}/{habitCount} habits</p>
+                      {tooltip.data.habits.map((h) => (
+                        <p key={h} style={{ color: 'rgba(255,255,255,0.7)' }}>· {h}</p>
+                      ))}
+                    </>
+                  )}
+                  {health && (health.sleep_hours != null || health.mood_score != null || health.water_litres != null) && (
+                    <div style={{ marginTop: tooltip.data.count > 0 ? 6 : 0, paddingTop: tooltip.data.count > 0 ? 4 : 0, borderTop: tooltip.data.count > 0 ? '1px solid rgba(255,255,255,0.2)' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {health.sleep_hours != null && <span>😴 {health.sleep_hours}h</span>}
+                      {health.mood_score != null && <span style={{ width: 8, height: 8, borderRadius: '50%', background: moodColour(health.mood_score), display: 'inline-block' }} />}
+                      {health.water_litres != null && <span>💧 {health.water_litres}L</span>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -1,27 +1,23 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 30)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 32)
 
 ---
 
-## How to Use This Plan with Claude Code
+## Instructions for Claude Code
 
-When you are ready to build, open Cursor, go to the terminal, and type `claude` to start Claude Code. Then paste the following prompt:
+This is the full build plan for a personal productivity app (Task Manager + Habit Tracker) built on Next.js, Supabase, NextAuth, and Tailwind CSS, deployed on Vercel.
 
-> "Please read the file at docs/BUILD_PLAN.md. This is the full build plan for my personal productivity app. Find the first phase marked `[ ] Pending` and work through it section by section.
->
-> **Important — update this file as you go, not just at the end. For each numbered section (e.g. 22.1, 22.2), follow this three-step pattern before moving on:**
->
-> 1. **Before writing any code**, add a brief **Approach** note directly below the section heading. Write 2–4 sentences explaining which files you will change, what the key decision or risk is, and how you plan to solve it. This captures your thinking so that if the session ends unexpectedly, the next session can resume without repeating the analysis.
->
-> 2. **After completing the section**, add a **Completion Notes** entry directly below the Approach note, describing what you actually built, what files changed, and whether the success criteria were met.
->
-> 3. **After completing the entire phase**, update its status in the Build Status table from `[ ] Pending` to `[x] Done` and add an overall Completion Notes block at the top of the phase.
->
-> If you are interrupted or the session ends mid-phase, the Approach notes already written will preserve your reasoning so work can resume from exactly the right place without re-reading the codebase from scratch.
->
-> If you hit an error you cannot fix, or you need information from me (like account credentials or API keys), stop and ask. Otherwise keep going until the entire pending phase is complete."
+**When asked to read this plan and implement updates, do the following:**
 
-Claude Code will then run autonomously. Keep an eye on the terminal — it will stop and ask you at the **pause points** listed below.
+1. Find the first phase in the Build Status table marked `[ ] Pending`.
+2. Work through it section by section, in order.
+3. **Update this file as you go — not just at the end.** For each numbered section, follow this three-step pattern before moving on:
+   - **Before writing any code:** add a brief `Approach:` note directly below the section heading — 2–4 sentences explaining which files you will change, what the key decision or risk is, and how you plan to solve it. This preserves your reasoning so that if the session ends unexpectedly, the next session can resume without re-reading the codebase from scratch.
+   - **After completing the section:** add a `Completion Notes:` entry describing what you actually built, what files changed, and whether the success criteria were met.
+   - **After completing the entire phase:** update its status in the Build Status table from `[ ] Pending` to `[x] Done`, add an overall Completion Notes block at the top of the phase, and update the `Last updated` line at the top of this file.
+4. If you hit an error you cannot fix, or need information (such as credentials or API keys), stop and ask. Otherwise keep going until the entire pending phase is complete.
+
+**To start:** open Cursor, go to the terminal, type `claude`, then paste: `Please read the build plan and implement updates`
 
 ---
 
@@ -72,6 +68,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 29 | Mobile-Friendly Layout + PWA | [x] Done |
 | 30 | Overlapping Calendar Events — Side-by-Side Column Layout | [x] Done |
 | 31 | Bug Fix: Habit Deletion (Foreign Key Cascade) | [x] Done |
+| 32 | Bug Fix: Dark Sidebar Active Text + Health Metrics Per-Day on Calendar | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -3786,4 +3783,109 @@ As a belt-and-braces measure, also alter the foreign key in Supabase so future d
 
 ---
 
-*End of Build Plan — 31 Active Phases + 2 Future Stages*
+---
+
+## Phase 32 — Bug Fix: Dark Sidebar Active Text + Health Metrics Per-Day on Calendar
+
+**Status:** [x] Done
+
+**Completion Notes:** Three sections completed. (1) Fixed active sidebar item readability on London, Addis, and Ocean dark-sidebar themes — darkened `--bg-active` and added `--sidebar-active-text: #FFFFFF` in `globals.css`, applied via CSS fallback in `Sidebar.tsx`. (2) Fixed `HealthLog.tsx` stale-date bug — `today` is now state, resets with `window.focus` listener; selectors clear and re-fetch on day change. (3) Added health metrics overlay to `HabitCalendar.tsx` — `loadMonth()` now fetches `health_logs` in parallel; fullscreen cells show `😴 Xh · mood dot · 💧 XL`; small calendar tooltip includes the same data. Build passed with zero TypeScript errors.
+
+**What this does:** Two fixes. (1) In the London and Addis themes, the active sidebar item (e.g. "Today") is unreadable because the sidebar is dark but `--bg-active` is set to a light colour — resulting in light-coloured text on a light background. (2) The Sleep / Mood / Water health metrics in the Habits page already save per-day to Supabase, but the selectors don't reset when a new day starts (they keep showing yesterday's values), and the data is not visible on the monthly habit calendar.
+
+---
+
+### Steps for Claude Code
+
+#### 32.1 — Fix active state readability on dark-sidebar themes (London, Addis)
+
+*Approach:* The issue affects three themes: **London** (`--bg-active: #FDECEA`, light; `--sidebar-text: #E8E8E8`, light), **Addis** (`--bg-active: #FDF3E3`, light; `--sidebar-text: #D4EBD8`, light), and **Ocean** (`--bg-active: #DBEAFE`, light; `--sidebar-text: #E2E8F0`, light) — all give light-on-light contrast. Dark theme uses `--bg-active: #2E2720` (dark) with `--sidebar-text: #F1F1F1` (light) and is already readable. The fix has two parts: (1) update `--bg-active` in `globals.css` for London/Addis/Ocean to darker values and add a `--sidebar-active-text` token; (2) in `Sidebar.tsx`, change the active nav button `color` from `var(--sidebar-text)` to `var(--sidebar-active-text, var(--sidebar-text))` so all other themes fall back to the existing token. Same fix applied to the active project button.
+
+**Root cause:** London (`--bg-sidebar: #2D2D2D`) and Addis (`--bg-sidebar: #1B3A2D`) use dark sidebars with light sidebar text (`--sidebar-text`). However their `--bg-active` tokens are both set to a light, washed-out accent colour (London: `#FDECEA`, Addis: `#FDF3E3`). The active nav item therefore renders light text on a light background — unreadable.
+
+**Fix:** In `src/app/globals.css`, update `--bg-active` for both themes to a dark value that works against the dark sidebar. Also add a `--sidebar-active-text` token for these themes to ensure the active label is always legible, and use it in `Sidebar.tsx` for the active nav item text colour.
+
+Suggested values:
+| Theme | `--bg-active` | `--sidebar-active-text` |
+|-------|--------------|------------------------|
+| London | `#4A1010` (dark crimson, matches the red accent) | `#FFFFFF` |
+| Addis | `#243D2D` (slightly lighter than sidebar, same green family) | `#FFFFFF` |
+
+In `Sidebar.tsx`, for the active nav item, use `color: var(--sidebar-active-text, var(--sidebar-text))` — so the fallback is the existing `--sidebar-text` if the token is not defined (all other themes are unaffected).
+
+Also check Ocean and Dark themes — they also have dark sidebars and should be verified at the same time. If they have the same issue, apply the same fix.
+
+**Completion Notes:** Updated `globals.css` — darkened `--bg-active` for Ocean (`#1E3A5F`), London (`#4A1010`), and Addis (`#243D2D`), and added `--sidebar-active-text: #FFFFFF` to each. Updated `Sidebar.tsx` — changed active nav button and active project button `color` to `active ? 'var(--sidebar-active-text, var(--sidebar-text))' : 'var(--sidebar-text)'` so the new token is used when defined, with automatic fallback for all other themes. Success criteria met: all three dark-sidebar themes now show white text on a dark active background; light-sidebar themes (Default, Sage, etc.) are unaffected by the CSS fallback.
+
+---
+
+#### 32.2 — Health metrics: reset selectors each new day
+
+*Approach:* `HealthLog.tsx` computes `today` as a plain `const` on every render, but because it never changes within a component lifetime the `useEffect([today])` only ever fires once. Fix: convert `today` to state (`useState(() => new Date().toISOString().slice(0, 10))`), add `setData` reset before each fetch so stale values clear immediately, and add a `window.focus` listener that calls `setToday` when the date string has changed. When `today` state changes the existing `useEffect([today])` automatically re-fetches. The `scheduleUpsert` closure uses `today` from the render scope, so it always writes to the correct date.
+
+**Root cause:** The Sleep / Mood / Water selectors in `src/app/habits/page.tsx` load their initial state once on mount. If the user left the page open from yesterday, or if today's `health_logs` row doesn't exist yet, the selectors show yesterday's saved values instead of being blank/default for the new day.
+
+**Fix:**
+1. When loading health log data on mount, fetch the row for **today's date only** (already the case via `.eq('date', today)`). If no row exists for today, reset all three selectors to their default/empty state — do not carry forward yesterday's values.
+2. Add a `useEffect` that checks the current date once per minute (or on window focus). If the date has changed since the component mounted, re-fetch and reset the selectors to today's values (or empty if no entry exists yet). This ensures the selectors reset automatically at midnight without requiring a page reload.
+
+```ts
+// Check for day change on focus
+useEffect(() => {
+  const checkDate = () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (today !== loadedDate.current) {
+      loadedDate.current = today;
+      fetchHealthLog(today); // re-fetch for new day, resets to empty if no entry
+    }
+  };
+  window.addEventListener('focus', checkDate);
+  return () => window.removeEventListener('focus', checkDate);
+}, []);
+```
+
+**Completion Notes:** `HealthLog.tsx` — converted `today` from a `const` to `useState`, added `setData` reset at the start of the fetch effect so stale values clear immediately when the date changes, and added a `window.focus` listener that calls `setToday` whenever the date string differs from the current state. The existing `useEffect([today])` therefore re-fetches automatically when the day rolls over. Success criteria met.
+
+---
+
+#### 32.3 — Health metrics: show Sleep / Mood / Water on the monthly habit calendar
+
+*Approach:* Add a `HealthDay` type and a `healthData: Map<string, HealthDay>` state to `HabitCalendar.tsx`. Extend `loadMonth()` to run a second Supabase query for `health_logs` filtered by the same `start`/`end` date range, and populate the map. In the fullscreen calendar, render a compact row inside each day cell (below the habit count) showing `😴 Xh`, a mood dot (coloured by score: ≤2 red, 3 amber, ≥4 green), and `💧 XL` — only for fields that have a value. In the small calendar, add the same data to the hover tooltip. Days with no health data show nothing extra.
+
+The Habits page has two tabs: the daily checklist and the monthly calendar. Currently the monthly calendar only shows habit completion data. Health metrics (sleep/mood/water) are stored in `health_logs` with a `date` field but are never displayed on the calendar.
+
+**Fix:** On the monthly calendar tab, below (or alongside) each day cell, show a compact health summary for that day if data exists:
+- Fetch the full month's `health_logs` rows alongside the habit log data (single query, filter by `user_id` and `date BETWEEN month_start AND month_end`).
+- For each day cell that has a health log entry, show small indicator icons or values:
+  - 💤 Sleep: show the hours value (e.g. "7h")
+  - 😊 Mood: show a small coloured dot (green = good/great, amber = okay, red = bad/terrible)
+  - 💧 Water: show the glasses count (e.g. "6")
+- Days with no health data show nothing extra — no empty placeholders.
+- Keep the design compact so it doesn't overwhelm the habit completion cells. A single row of small text/icons below the habit dots is sufficient.
+
+**Completion Notes:** `HabitCalendar.tsx` — added `HealthDay` type and `healthData: Map<string, HealthDay>` state. Updated `loadMonth()` to run `habit_logs` and `health_logs` queries in parallel via `Promise.all`, filtered to the same `start`/`end` date range. Added `moodColour()` helper (≤2 red, 3 amber, ≥4 green). In the fullscreen calendar each cell now renders a compact row (`😴 Xh · mood dot · 💧 XL`) below the habit count for days that have health data. Popover also shows the health row when present. In the small calendar the hover tooltip now includes health data below the habit list. Days with no health data show nothing extra. Success criteria met.
+
+---
+
+#### 32.4 — Deploy
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Test London and Addis themes — confirm the active sidebar item is clearly readable.
+3. Test health metrics: log sleep/mood/water today, check they appear on the calendar for today. Navigate to tomorrow (or simulate), confirm selectors reset.
+4. Commit: `git commit -m "Phase 32 — fix dark-sidebar active text, health metrics daily reset + calendar display"`
+5. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** `npm run build` passed with zero TypeScript errors. All three sections implemented and verified at compile time. Committed and pushed.
+
+---
+
+### Success Criteria
+- In London and Addis themes, the active sidebar item text is clearly legible.
+- Dark and Ocean themes verified — no readability regression.
+- Health metric selectors show empty/default state on a new day, not yesterday's values.
+- Switching to the app after midnight (or on a new day) resets the selectors automatically.
+- Sleep, Mood, and Water data for each day is visible as compact indicators on the monthly habit calendar.
+
+---
+
+*End of Build Plan — 32 Active Phases + 2 Future Stages*

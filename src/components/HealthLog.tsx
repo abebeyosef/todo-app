@@ -18,7 +18,7 @@ const MOODS = [
 ];
 
 export default function HealthLog() {
-  const today = new Date().toISOString().slice(0, 10);
+  const [today, setToday] = useState(() => new Date().toISOString().slice(0, 10));
   const [data, setData] = useState<HealthData>({ sleep_hours: null, mood_score: null, water_litres: null });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -26,6 +26,7 @@ export default function HealthLog() {
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    setData({ sleep_hours: null, mood_score: null, water_litres: null });
     supabase
       .from('health_logs')
       .select('sleep_hours, mood_score, water_litres')
@@ -33,6 +34,16 @@ export default function HealthLog() {
       .maybeSingle()
       .then(({ data: row }) => { if (row) setData(row as HealthData); });
   }, [today]);
+
+  // Detect day change on window focus and reset selectors
+  useEffect(() => {
+    const checkDate = () => {
+      const d = new Date().toISOString().slice(0, 10);
+      setToday(prev => prev !== d ? d : prev);
+    };
+    window.addEventListener('focus', checkDate);
+    return () => window.removeEventListener('focus', checkDate);
+  }, []);
 
   const scheduleUpsert = (merged: HealthData) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
