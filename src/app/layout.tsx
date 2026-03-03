@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Sidebar from '@/components/Sidebar';
 import MainContent from '@/components/MainContent';
+import BottomNav from '@/components/BottomNav';
 import Providers from '@/components/Providers';
 import { ToastProvider } from '@/lib/toast';
 import GlobalOverlays from '@/components/GlobalOverlays';
@@ -21,7 +22,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('todo-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();` }} />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="ToDo" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="theme-color" content="#D97706" />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('todo-theme');if(t)document.documentElement.setAttribute('data-theme',t);if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');})();` }} />
       </head>
       <body className="flex h-screen overflow-hidden">
         <Providers>
@@ -33,6 +42,11 @@ export default function RootLayout({
             <MainContent>
               <Suspense>{children}</Suspense>
             </MainContent>
+            <div className="hide-desktop">
+              <Suspense>
+                <BottomNav />
+              </Suspense>
+            </div>
           </ToastProvider>
         </Providers>
       </body>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Task } from '@/types/task';
 import { supabase } from '@/lib/supabase';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 type Subtask = {
   id: string;
@@ -47,6 +48,7 @@ function formatDate(date: Date): string {
 }
 
 export default function TaskDetailPanel({ task, onClose, onTaskUpdate, onTaskDelete }: Props) {
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState('');
   const [description, setDescription] = useState('');
@@ -170,22 +172,50 @@ export default function TaskDetailPanel({ task, onClose, onTaskUpdate, onTaskDel
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        right: 0,
-        top: 0,
-        height: '100vh',
-        width: 400,
-        background: 'var(--bg-modal)',
-        borderLeft: '1px solid var(--border)',
-        boxShadow: '-4px 0 16px rgba(0,0,0,0.1)',
-        zIndex: 300,
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <>
+      {isMobile && (
+        /* Mobile backdrop */
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 299 }}
+          onClick={onClose}
+        />
+      )}
+      <div
+        style={isMobile ? {
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '85vh',
+          background: 'var(--bg-modal)',
+          borderRadius: '16px 16px 0 0',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
+          zIndex: 300,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'slideUp 220ms ease',
+        } : {
+          position: 'fixed',
+          right: 0,
+          top: 0,
+          height: '100vh',
+          width: 400,
+          background: 'var(--bg-modal)',
+          borderLeft: '1px solid var(--border)',
+          boxShadow: '-4px 0 16px rgba(0,0,0,0.1)',
+          zIndex: 300,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {isMobile && (
+          /* Drag handle */
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 0' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+          </div>
+        )}
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
         <button
@@ -519,6 +549,10 @@ export default function TaskDetailPanel({ task, onClose, onTaskUpdate, onTaskDel
           </button>
         </div>
       </div>
-    </div>
+      </div>
+      {isMobile && (
+        <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      )}
+    </>
   );
 }

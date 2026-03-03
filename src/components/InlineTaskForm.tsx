@@ -13,6 +13,7 @@ type Props = {
   onCancel: () => void;
   defaultProjectId?: string;
   error?: string | null;
+  mobileSheet?: boolean;
 };
 
 const PRIORITY_FLAGS: { value: 'p1' | 'p2' | 'p3'; colour: string; label: string }[] = [
@@ -61,7 +62,7 @@ function formatPreview(name: string, overrideDate?: Date): string {
   return parts.length > 0 ? '→ ' + parts.join(' · ') : '';
 }
 
-export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProjectId, error }: Props) {
+export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProjectId, error, mobileSheet }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'p1' | 'p2' | 'p3'>('p2');
@@ -150,15 +151,15 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
   const previewText = formatPreview(name, scheduledAt);
   const currentPriority = PRIORITY_FLAGS.find((f) => f.value === priority)!;
 
-  return (
+  const formContent = (
     <div
       style={{
-        border: '1px solid var(--border)',
-        borderRadius: 8,
+        border: mobileSheet ? 'none' : '1px solid var(--border)',
+        borderRadius: mobileSheet ? 0 : 8,
         background: 'var(--bg-input)',
-        boxShadow: 'var(--shadow-dropdown)',
+        boxShadow: mobileSheet ? 'none' : 'var(--shadow-dropdown)',
         overflow: 'visible',
-        marginBottom: 4,
+        marginBottom: mobileSheet ? 0 : 4,
         position: 'relative',
       }}
     >
@@ -450,4 +451,41 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
       </div>
     </div>
   );
+
+  if (mobileSheet) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 200,
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'flex-end',
+        }}
+        onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            background: 'var(--bg-modal)',
+            borderRadius: '16px 16px 0 0',
+            padding: '0 0 env(safe-area-inset-bottom)',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
+            animation: 'slideUp 200ms ease',
+          }}
+        >
+          {/* Drag handle */}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+          </div>
+          {formContent}
+        </div>
+        <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      </div>
+    );
+  }
+
+  return formContent;
 }

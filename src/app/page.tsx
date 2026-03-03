@@ -11,6 +11,7 @@ import TaskDetailPanel from '@/components/TaskDetailPanel';
 import CompletedSection from '@/components/CompletedSection';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/lib/toast';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 // ── Calendar API helpers ────────────────────────────────────────────────────
 // Returns the event ID string on success, null if no date (nothing to sync),
@@ -144,6 +145,7 @@ export default function TasksPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   // Listen for sidebar "Add task" button
   useEffect(() => {
@@ -599,6 +601,61 @@ export default function TasksPage() {
 
         {loading ? (
           <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading…</p>
+        ) : isMobile ? (
+          /* ── Mobile: day-by-day list ─────────────────────────────────────── */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {days.map((day, di) => {
+              const dayStr = day.toISOString().slice(0, 10);
+              const isToday = dayStr === todayStr2;
+              const dayTasks = weekTasksAll
+                .filter((t) => dayOfWeekIndex(t.scheduledAt!) === di)
+                .sort((a, b) => {
+                  const aT = a.scheduledAt?.getTime() ?? 0;
+                  const bT = b.scheduledAt?.getTime() ?? 0;
+                  return aT - bT;
+                });
+              const label = day.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+              return (
+                <div key={di}>
+                  {/* Day heading */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    paddingBottom: 8,
+                    borderBottom: '1px solid var(--divider)',
+                    marginBottom: 8,
+                  }}>
+                    <div style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      background: isToday ? 'var(--accent)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: isToday ? 'white' : 'var(--text-primary)',
+                      flexShrink: 0,
+                    }}>
+                      {day.getDate()}
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: isToday ? 'var(--accent)' : 'var(--text-primary)' }}>
+                      {label}
+                    </span>
+                  </div>
+                  {dayTasks.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', paddingLeft: 4 }}>Nothing scheduled</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {dayTasks.map((t) => renderTask(t))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             {/* All-day row */}

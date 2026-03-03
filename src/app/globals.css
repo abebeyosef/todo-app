@@ -74,6 +74,19 @@
   --habit-grey:       #E0E0E0;
 }
 
+/* ── Responsive utilities ─────────────────────────────────────────────── */
+/* mobile: max-width 767px  |  tablet: 768–1024px  |  desktop: 1025px+ */
+
+* { -webkit-tap-highlight-color: transparent; }
+
+@media (max-width: 767px) {
+  .hide-mobile { display: none !important; }
+  .main-content { padding: 20px 16px 80px !important; }
+}
+@media (min-width: 768px) {
+  .hide-desktop { display: none !important; }
+}
+
 /* ── Theme: Sand (explicit, matches :root) ─────────────────────────────── */
 [data-theme="sand"] {
   --bg-sidebar: #FAF8F5; --bg-main: #FFFFFF; --accent: #D97706;

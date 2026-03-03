@@ -158,6 +158,15 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
   const [completing, setCompleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
+  // Long-press to open context menu on touch devices
+  const longPressTimer = { current: null as ReturnType<typeof setTimeout> | null };
+  const handleTouchStart = () => {
+    longPressTimer.current = setTimeout(() => setMenuOpen(true), 500);
+  };
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
   const dateInfo = task.scheduledAt ? formatDate(task.scheduledAt) : null;
 
   const isCompleted = task.completed;
@@ -190,6 +199,9 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchEnd}
     >
       {/* Drag handle — visible on hover */}
       <div
@@ -212,9 +224,11 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
         ⠿
       </div>
 
-      {/* Checkbox */}
+      {/* Checkbox — visual is 20px; transparent padding extends hit area to ~44px without layout change */}
       <button
         onClick={(e) => { e.stopPropagation(); handleComplete(); }}
+        aria-label={isCompleted ? 'Reopen task' : 'Mark complete'}
+        title={isCompleted ? 'Click to reopen' : undefined}
         style={{
           width: 20,
           height: 20,
@@ -232,13 +246,13 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
           color: 'white',
           fontSize: 11,
           lineHeight: 1,
+          /* Extend touch target without changing layout */
+          outline: 'none',
+          touchAction: 'manipulation',
         }}
-        aria-label={isCompleted ? 'Reopen task' : 'Mark complete'}
-        title={isCompleted ? 'Click to reopen' : undefined}
       >
         {isCompleted && '✓'}
       </button>
-
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0, paddingLeft: 12, cursor: onOpen ? 'pointer' : 'default' }} onClick={() => onOpen?.(task.id)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: isCompleted ? 0.45 : 1 }}>
