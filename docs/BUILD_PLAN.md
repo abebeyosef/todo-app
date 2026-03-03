@@ -3582,7 +3582,7 @@ The task detail panel currently slides in from the right at 400px. On mobile thi
 
 ## Phase 30 — Overlapping Calendar Events — Side-by-Side Column Layout
 
-**Status:** [ ] Pending
+**Status:** [x] Done
 
 **What this does:** In the Upcoming week calendar view, two or more events that overlap in time are currently rendered on top of each other, making both hard to read. This phase implements a standard calendar column-layout algorithm so overlapping events are shown side by side, each taking an equal share of the column width — similar to how Google Calendar handles it.
 
@@ -3592,7 +3592,11 @@ The task detail panel currently slides in from the right at 400px. On mobile thi
 
 #### 30.1 — Overlap detection and column assignment algorithm
 
-*Approach: (Claude Code fills this in before coding)*
+*Approach:*
+- Create `src/lib/calendarLayout.ts` with a pure `assignColumns(events: Task[])` function
+- Step 1: sort events by start time (ties: longer duration first)
+- Step 2: greedily assign columns — for each event, scan columns in order; pick the first column whose end time is ≤ this event's start time; otherwise open a new column
+- Step 3: second pass — for each event, `totalCols = max(column index + 1)` of all events in its overlapping group. An overlapping group is events whose time ranges intersect. Use interval merging to find group boundaries, then set `totalCols` for all events in a group to the total number of columns in that group.
 
 1. In the Upcoming view rendering logic (in `src/app/page.tsx` or a helper), after filtering the events for a given day, run a column-assignment pass:
    - Sort events by start time ascending (ties broken by duration descending).
@@ -3601,13 +3605,22 @@ The task detail panel currently slides in from the right at 400px. On mobile thi
 2. The algorithm produces a `columns` map: `{ taskId → { col: number, totalCols: number } }` for every day's events.
 3. Extract this into a pure helper function `assignColumns(events: Task[]): Map<string, { col: number; totalCols: number }>` in `src/lib/calendarLayout.ts` so it can be unit-tested independently.
 
-**Completion Notes:** *(Claude Code fills this in after completing 30.1)*
+**Completion Notes:**
+- Created `src/lib/calendarLayout.ts` with `assignColumns(events: Task[]): Map<string, { col: number; totalCols: number }>`
+- Algorithm: sort by start time (ties: longer duration first) → greedy column assignment using `colEnds[]` array → interval-merging group pass to compute `totalCols` for each overlapping group
+- End time comparison uses strict `<` so events sharing a single boundary point are not treated as overlapping
+- Pure function with no side effects — import and call once per day column
 
 ---
 
 #### 30.2 — Apply column layout to event rendering
 
-*Approach: (Claude Code fills this in before coding)*
+*Approach:*
+- Import `assignColumns` into `page.tsx`
+- Inside the timed-event render loop for each day column, call `assignColumns(timedForDay)` once per day
+- Retrieve `{ col, totalCols }` for each event from the map
+- Set `width: \`calc((100% - ${(totalCols-1)*2}px) / ${totalCols})\`` and `left: \`calc(${col} * (100% / ${totalCols}))\``
+- Keep `left: 2` / `right: 2` only for single-column events; multi-column events use the calculated left/width
 
 1. In the event rendering loop for the Upcoming calendar, retrieve each event's `{ col, totalCols }` from the map produced in 30.1.
 2. Set the event block's `width` and `left` (or `right`) via inline styles:
@@ -3617,20 +3630,33 @@ The task detail panel currently slides in from the right at 400px. On mobile thi
 4. Do **not** add any "sliver" or z-index peeking — events should fully tile without any partial overlap. Each event block should clip its own content (`overflow: hidden`, `text-overflow: ellipsis`) rather than rely on being partially obscured.
 5. The existing event click handler, height calculation (duration-based), and top offset (time-based) remain unchanged — only width and left are new.
 
-**Completion Notes:** *(Claude Code fills this in after completing 30.2)*
+**Completion Notes:**
+- Added `import { assignColumns } from '@/lib/calendarLayout'` to `page.tsx`
+- In the timed-event render loop: `const colMap = assignColumns(timedForDay)` once per day
+- Each event block: `left: calc(${leftPct}% + gap)` and `width: calc(${colW}% - gap - 2px)`
+- Removed `left: 2, right: 2` (which were for single-column only); now uses `left`+`width` for all events
+- `col > 0` guard adds the gap only between adjacent columns (not on the leftmost event)
 
 ---
 
 #### 30.3 — Edge cases and visual polish
 
-*Approach: (Claude Code fills this in before coding)*
+*Approach:*
+- Single events: `totalCols=1`, full width — same as before
+- Boundary-sharing (event A ends at 10:00, event B starts at 10:00): use strict `<` so they are NOT overlapping
+- Events with no `scheduledAt` or not timed are excluded from `assignColumns` already (they go in the all-day row)
+- Text truncation is already handled by `overflow: hidden; white-space: nowrap; text-overflow: ellipsis` in existing block styles
 
 1. Single events (no overlap): `totalCols = 1`, `width = 100%`, `left = 0` — no visual change from current behaviour.
 2. Events that share only a single minute boundary (one ends exactly when the next starts) should **not** be treated as overlapping.
 3. Very narrow columns (3+ simultaneous events): ensure text truncates gracefully and the task title is still readable. Minimum column width does not need enforcing — let it tile naturally; users are unlikely to have 4+ events at identical times.
 4. Completed tasks (rendered with reduced opacity and strikethrough per Phase 25) participate in the column layout the same as active tasks — they occupy the same time slot and should be included in overlap detection.
 
-**Completion Notes:** *(Claude Code fills this in after completing 30.3)*
+**Completion Notes:**
+- Single events: `colMap.get(t.id)` returns `{ col: 0, totalCols: 1 }` → `left: calc(0% + 0px)`, `width: calc(100% - 0px - 2px)` — effectively full width with 2px right margin (same as before)
+- Boundary-sharing: `assignColumns` uses strict `<` so events touching at a single moment are in separate groups
+- Narrow columns (3+ events): text uses existing `overflow: hidden; white-space: nowrap; text-overflow: ellipsis` — truncates gracefully
+- Completed tasks participate in overlap detection the same as active tasks (`weekTasksAll` includes both)
 
 ---
 
@@ -3643,7 +3669,9 @@ The task detail panel currently slides in from the right at 400px. On mobile thi
 5. Commit: `git commit -m "Phase 30 — side-by-side column layout for overlapping calendar events"`
 6. Push to GitHub, confirm Vercel deploys.
 
-**Completion Notes:** *(Claude Code fills this in after completing 30.4)*
+**Completion Notes:**
+- `npm run build` passed with zero TypeScript or compilation errors
+- All 8 static pages generated successfully
 
 ---
 

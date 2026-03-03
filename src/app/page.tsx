@@ -12,6 +12,7 @@ import CompletedSection from '@/components/CompletedSection';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/lib/toast';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import { assignColumns } from '@/lib/calendarLayout';
 
 // ── Calendar API helpers ────────────────────────────────────────────────────
 // Returns the event ID string on success, null if no date (nothing to sync),
@@ -768,6 +769,7 @@ export default function TasksPage() {
 
                 {days.map((day, di) => {
                   const timedForDay = weekTasksAll.filter((t) => isTimedTask(t) && dayOfWeekIndex(t.scheduledAt!) === di);
+                  const colMap = assignColumns(timedForDay);
                   return (
                     <div
                       key={di}
@@ -795,13 +797,17 @@ export default function TasksPage() {
                         />
                       ))}
 
-                      {/* Timed task blocks */}
+                      {/* Timed task blocks — side-by-side when overlapping */}
                       {timedForDay.map((t) => {
                         const h = t.scheduledAt!.getHours();
                         const m = t.scheduledAt!.getMinutes();
                         const top = (h - START_HOUR + m / 60) * HOUR_HEIGHT;
                         const height = Math.max(((t.duration ?? 30) / 60) * HOUR_HEIGHT, 28);
                         const colour = t.projectColour ?? 'var(--accent)';
+                        const { col, totalCols } = colMap.get(t.id) ?? { col: 0, totalCols: 1 };
+                        const colW = 100 / totalCols;
+                        const leftPct = col * colW;
+                        const gap = 2; // px gap between columns
                         return (
                           <div
                             key={t.id}
@@ -810,8 +816,8 @@ export default function TasksPage() {
                             style={{
                               position: 'absolute',
                               top,
-                              left: 2,
-                              right: 2,
+                              left: `calc(${leftPct}% + ${col > 0 ? gap : 0}px)`,
+                              width: `calc(${colW}% - ${col > 0 ? gap : 0}px - 2px)`,
                               height,
                               background: colour + (t.completed ? '1a' : '33'),
                               borderLeft: `3px solid ${colour}`,
