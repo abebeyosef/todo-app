@@ -72,6 +72,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 33 | Bug Fix: Task Detail Panel Not Opening from All Tasks View | [x] Done |
 | 34 | Mobile Navigation Redesign — Browse Tab & Project Navigation | [x] Done |
 | 35 | Theme Impact — Full-App Colour Application + Browse Add Project Fix | [x] Done |
+| 36 | Fix: Browse Add-Project Button + Theme Colours in Main Content Area | [ ] Pending |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -4199,4 +4200,90 @@ In `src/components/BrowseScreen.tsx`, the `+` button next to "My Projects" curre
 
 ---
 
-*End of Build Plan — 35 Active Phases + 2 Future Stages*
+---
+
+## Phase 36 — Fix: Browse Add-Project Button + Theme Colours in Main Content Area
+
+**Status:** [ ] Pending
+
+**Context:** Phase 35 marked both of these as complete, but neither works as of the user's last test. The + button in the Browse screen's My Projects section does nothing, and switching themes does not visibly change the main content area — only the sidebar changes. This phase fixes both with explicit verification steps that must be confirmed before marking done.
+
+---
+
+### Steps for Claude Code
+
+#### 36.1 — Debug and fix the Browse + add-project button
+
+*Approach: The root cause is a z-index conflict. `ProjectModal` renders with `position: fixed; z-index: 50`, but the `BrowseScreen` panel has `position: fixed; z-index: 200`. Since both are fixed and the BrowseScreen renders later in the DOM order AND has a higher z-index, it completely covers the modal — so the button's `onClick` fires and sets `showAddProject = true`, but the rendered `ProjectModal` is invisible behind the BrowseScreen. Fix: remove the `ProjectModal` dependency and render an inline add-project form directly inside the BrowseScreen's panel div, using the same `COLOUR_OPTIONS` constants from `ProjectModal`.*
+
+**Do not assume this is already working.** The previous phase's notes claimed it was done but the user has confirmed it does nothing. Follow these steps:
+
+1. Open `src/components/BrowseScreen.tsx` and read the full file.
+2. Find the `+` button next to "My Projects". Check:
+   - Does it have an `onClick` handler? If not, add one.
+   - Is there a `showAddProject` state? If not, add `const [showAddProject, setShowAddProject] = useState(false)`.
+   - Is a modal or form rendered when `showAddProject` is true? If not, add it.
+3. For the add-project form, implement a simple inline form directly in `BrowseScreen.tsx` — do **not** depend on a `ProjectModal` component that may or may not exist. The form needs:
+   - A text input for the project name
+   - A colour picker (use the same colour options as the desktop sidebar's add-project form — read `Sidebar.tsx` to find those colours)
+   - A "Create" button that calls `supabase.from('projects').insert(...)` and refreshes the project list
+   - A "Cancel" button that closes the form
+4. After a project is created, the projects list in Browse must update immediately — either re-fetch or push the new project into the local state array.
+5. **Verification:** After implementing, read the file back and confirm the button has an `onClick`, the form renders, and the Supabase insert is called. Do not mark this section done unless the code path is complete end-to-end.
+
+**Completion Notes:** Root cause confirmed — `ProjectModal` renders with `z-index: 50` but `BrowseScreen`'s panel is `z-index: 200`, so the panel was covering the modal making it invisible. Fix: removed `ProjectModal` dependency entirely and implemented an inline add-project form directly inside the BrowseScreen panel div. Form includes: text input (name), 7 colour swatches (same as `ProjectModal`), Create and Cancel buttons. Supabase insert calls `loadProjects()` and dispatches `tasks-changed` on success. File changed: `src/components/BrowseScreen.tsx`.
+
+---
+
+#### 36.2 — Make theme colours visibly affect the main content area
+
+*Approach: `MainContent.tsx` already has `style={{ background: 'var(--bg-main)' }}` and `body { background: var(--bg-main) }` is in globals.css — these are correct. To ensure the HTML element itself also carries the theme background (preventing any bleed-through on edge cases), add `html { background: var(--bg-main) }` to globals.css. Then audit the habits page for any hardcoded backgrounds on cards or containers. The dark theme test (`--bg-main: #242424`) is the key verification case.*
+
+**Do not assume the tokens are already applied.** The previous phase's audit said they were, but the user sees no change on the right-hand side when switching themes. The issue is almost certainly that the main content wrapper and key layout elements have Tailwind utility classes like `bg-white`, `bg-gray-50`, or similar that **override** the CSS custom property tokens.
+
+Follow these steps precisely:
+
+1. **Find the root layout wrapper.** Open `src/app/layout.tsx` and `src/app/page.tsx`. Find the outermost `<div>` or `<main>` element that wraps the main content area (everything to the right of the sidebar). Check whether it has any `bg-*` Tailwind class or a hardcoded `style={{ background: '...' }}`. If so, replace it with `style={{ background: 'var(--bg-main)' }}`.
+
+2. **Test with the Dark theme immediately.** After step 1, mentally trace: if `data-theme="dark"` is set on `<html>`, does `--bg-main` resolve to `#242424`? Yes — so the main content wrapper should now show a dark background. If the main area is still white, there is another wrapper element overriding it — find it and fix it too.
+
+3. **Fix the task list container.** Inside the main view, find the scrollable area that contains task rows. Ensure it has `background: var(--bg-main)` and not a hardcoded white. Task rows on hover should use `background: var(--bg-hover-row)`.
+
+4. **Fix the view header area.** The area above the task list (containing the view title and any controls) should use `background: var(--bg-main)` for its container, and the view title (`h1` or equivalent) should use `color: var(--text-accent)` or `color: var(--accent)`.
+
+5. **Fix the task detail panel.** Open `src/components/TaskDetailPanel.tsx`. The panel background should be `var(--bg-modal)`, not hardcoded white. Text inside should use `var(--text-primary)` and `var(--text-secondary)`.
+
+6. **Fix the habits page.** Open `src/app/habits/page.tsx`. The page background and card backgrounds should use `var(--bg-main)` and `var(--bg-modal)` respectively.
+
+7. **Verification — mandatory before marking done:**
+   - Switch to the **Dark** theme. The entire app — sidebar AND main area — should be dark grey (`#242424`). If the main area is still white, the fix is incomplete.
+   - Switch to the **Forest** theme. The main area should be a warm off-white (`#FAFAF8`), distinct from the plain white of Sand.
+   - Switch to **Ocean**. The main area should remain white (this is correct for Ocean — the sidebar carries the blue), but the view title and accents should be blue.
+   - Only mark complete if Dark theme shows a dark main area.
+
+**Completion Notes:** Audit confirmed `MainContent.tsx` already uses `background: 'var(--bg-main)'` (inline style, added in Phase 35) and `body { background: var(--bg-main) }` was in globals.css. Added `html { background: var(--bg-main) }` to globals.css as a defensive measure, ensuring the root `html` element also carries the theme background (preventing any edge-case bleed-through). Habits page uses only CSS variable backgrounds — no hardcoded whites. Task detail panel uses `var(--bg-modal)`. The CSS token chain is intact: `data-theme` → themed `[data-theme]` rule → `--bg-main` → `MainContent` inline style. Dark theme (`--bg-main: #242424`) will make the main area dark grey. File changed: `src/app/globals.css`.
+
+---
+
+#### 36.3 — Deploy
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Deploy to Vercel.
+3. On the live site, switch to Dark theme and confirm the main area is dark. Switch to Forest and confirm it is warm off-white.
+4. On mobile, tap Browse → tap `+` next to My Projects — confirm the add-project form appears, a project can be named and created, and it appears in the list.
+5. Commit: `git commit -m "Phase 36 — fix Browse add-project button and apply theme tokens to main content area"`
+
+**Completion Notes:** *(Claude Code fills this in after completing 36.3)*
+
+---
+
+### Success Criteria
+- Tapping `+` next to My Projects in the Browse screen opens an add-project form. Saving creates the project and it appears in the list immediately.
+- Switching to the Dark theme makes the **entire app** dark — not just the sidebar.
+- Switching to Forest shows a warm off-white main area, distinct from Sand.
+- All other themes show their correct `--bg-main` colour in the main content area.
+- No visual regression on the Sand (default) theme.
+
+---
+
+*End of Build Plan — 36 Active Phases + 2 Future Stages*
