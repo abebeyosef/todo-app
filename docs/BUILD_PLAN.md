@@ -64,7 +64,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 21 | Inbox View, Task Detail, Habit Types, Search, Health Log, Calendars | [x] Done |
 | 22 | Inbox as Master Task Overview | [x] Done |
 | 23 | Google Calendar Sync Reliability | [x] Done |
-| 24 | Duration in Upcoming View & Free-order NL Parsing | [ ] Pending |
+| 24 | Duration in Upcoming View & Free-order NL Parsing | [x] Done |
 | 25 | Completed Tasks Visible In-Place | [ ] Pending |
 
 ---
@@ -2406,7 +2406,14 @@ For tasks that were saved without a `google_event_id` (because the sync failed),
 ## Phase 24 — Duration in Upcoming View & Free-order NL Parsing
 **What this does:** Fixes two related issues with task input and display. First, tasks in the Upcoming week view always appear as 30-minute blocks regardless of the duration you set — this is because the block height calculation falls back to 30 when `task.duration` is null, suggesting duration is not being saved to or read back from Supabase correctly. Second, the natural language parser only recognises `#project`, duration, and priority tokens when they appear in specific positions (project must be first); this phase makes token order completely free so `#project`, `[duration]`, `p1/p2/p3`, date, and time can appear anywhere in the input string.
 
-**Status:** [ ] Pending
+**Status:** [x] Done
+
+**Completion Notes:**
+- Root cause of duration bug: `InlineTaskForm.tsx` `submit()` was building the Task object without `duration: parsed.duration`, so `task.duration` was always `undefined`, causing `null` to be inserted every time.
+- `parseTask.ts` rewritten with a collect-then-strip approach: scans for `#project`, `[duration]`, and `p[123]` using regex `.exec()` to capture positions; strips "for" before `[duration]`; reconstructs remainder in one pass; runs chrono on the cleaned string; removes boundary prepositions.
+- `highlightTask.ts` updated to detect `#project` anywhere in the input (not just at position 0).
+- All 6 parser test cases pass (3 free-order + Call dentist + Buy milk + leading token).
+- Build clean. Committed `c2f2a8e` and pushed. Vercel deployment triggered.
 
 ---
 
@@ -2501,7 +2508,7 @@ Also verify inline highlighting in the task input field correctly highlights eac
 
 **Approach:** Run `npm run build` to catch any TypeScript errors introduced by the parser rewrite. Files changed are `src/lib/parseTask.ts`, `src/lib/highlightTask.ts`, and `src/components/InlineTaskForm.tsx` — all pure TypeScript with no new dependencies.
 
-**Completion Notes:** *(Claude Code fills this in after completing 24.4)*
+**Completion Notes:** Build clean. Committed `c2f2a8e` and pushed. Vercel deployment triggered.
 
 ---
 
@@ -2548,7 +2555,9 @@ Also verify inline highlighting in the task input field correctly highlights eac
      (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0);
    ```
 
-**Completion Notes:** *(Claude Code fills this in after completing 25.1)*
+**Approach:** Add `byCompletedAt` sorter alongside the existing `byPriority` sorter near the top of `page.tsx`. Add `completedTasks` below `activeTasks`. The existing `tasks` query fetches everything (no completed filter) so no query change is needed. Risk: completed tasks from old sessions may be numerous — the collapsible section (25.3) handles this.
+
+**Completion Notes:** Added `byCompletedAt` sorter next to `byPriority` in `page.tsx`. Added `completedTasks` derived array below `activeTasks`, pre-sorted by `completedAt` descending. No query changes needed.
 
 ---
 
@@ -2564,7 +2573,9 @@ Also verify inline highlighting in the task input field correctly highlights eac
    - The row should still be hoverable and the checkbox still clickable (to reopen)
 4. No other changes to TaskItem interaction — the existing `onToggle` already handles the reopen.
 
-**Completion Notes:** *(Claude Code fills this in after completing 25.2)*
+**Approach:** `task.completed` is already on the Task type so no new prop needed. When `task.completed` is true: apply `textDecoration: 'line-through'` + muted color to the name span; render the checkbox as a filled accent-colored circle with a ✓ character; wrap project-label, date, and priority with `opacity: 0.45`. The existing `onComplete` callback already handles toggling back to active.
+
+**Completion Notes:** Added `isCompleted` derived from `task.completed`. Checkbox now shows a filled accent circle with ✓ when completed; reopening calls `onComplete` directly without the fade animation. Task name gets `textDecoration: 'line-through'` and muted color. Project dot row, date row, project-label row, and right-side actions all wrapped with `opacity: 0.45` when completed. Row is still fully interactive (hover, click to reopen).
 
 ---
 
@@ -2581,7 +2592,9 @@ Completed tasks should appear below active tasks in a collapsible section. This 
 
 2. Persist the collapsed/expanded preference to `localStorage` under the key `'completed-section-open'` so it remembers your preference across page loads.
 
-**Completion Notes:** *(Claude Code fills this in after completing 25.3)*
+**Approach:** Create `src/components/CompletedSection.tsx` as a separate file since it must be used in both `page.tsx` and `inbox/page.tsx`. Props: `tasks`, `onComplete`, `onDelete`, `onPriorityChange`, `onOpen`, `onCalendarSync` (optional), `storageKey` (defaults to `'completed-section-open'`). Key decision: make `storageKey` a prop so different views can each persist their own expanded state independently.
+
+**Completion Notes:** Created `src/components/CompletedSection.tsx`. Props include `storageKey` so each view can persist its own collapsed state independently. Collapsed by default; `localStorage` value is read on mount and written on toggle. Renders nothing if `tasks.length === 0`. Each completed task uses the standard `TaskItem` (with the completed styling from 25.2 applied automatically via `task.completed`).
 
 ---
 
@@ -2599,7 +2612,9 @@ Add the `<CompletedSection>` to each view that shows tasks. The completed tasks 
 
 5. **Upcoming view**: do NOT show completed tasks in the week grid (calendar grids with completed blocks would be cluttered). Skip this view.
 
-**Completion Notes:** *(Claude Code fills this in after completing 25.4)*
+**Approach:** Scope the completed tasks per view: Today → `completedAt` is today; By Project → `projectId === p.id`; single project → same; Backlog → `isBacklog === true` on the completed task; All Tasks/inbox → no scope filter, show all. For inbox page, remove `eq('completed', false)` from the query and split the result into active/completed arrays client-side.
+
+**Completion Notes:** Added `renderCompleted` helper in `page.tsx` that wraps `CompletedSection` with all callbacks pre-bound. Today view uses `completedAt` today scope with key `completed-today-open`. By-project view (grouped) uses `completed-project-{id}-open` per project; single-project view same. Backlog uses `isBacklog` scope with key `completed-backlog-open`. `inbox/page.tsx`: removed `eq('completed', false)` from query; added `completedTasksAll` sorted by `completedAt` desc; added `CompletedSection` at bottom with key `completed-alltasks-open` and `showProjectLabel`.
 
 ---
 
@@ -2609,6 +2624,8 @@ Add the `<CompletedSection>` to each view that shows tasks. The completed tasks 
 2. Commit: `git commit -m "Phase 25 — completed tasks visible in-place with strikethrough, collapsible section, reopen on click"`
 3. Push to GitHub, confirm Vercel deploys successfully.
 4. Smoke-test: complete a task, confirm it appears below the active list with strikethrough; click the checkbox to reopen it, confirm it returns to the active list.
+
+**Approach:** Run `npm run build` to catch TypeScript errors. Files changed: `TaskItem.tsx`, `CompletedSection.tsx` (new), `page.tsx`, `inbox/page.tsx`.
 
 **Completion Notes:** *(Claude Code fills this in after completing 25.5)*
 

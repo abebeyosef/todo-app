@@ -160,9 +160,16 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
 
   const dateInfo = task.scheduledAt ? formatDate(task.scheduledAt) : null;
 
+  const isCompleted = task.completed;
+
   const handleComplete = () => {
-    setCompleting(true);
-    setTimeout(() => onComplete(task.id), 200);
+    if (isCompleted) {
+      // Reopening — no fade animation needed
+      onComplete(task.id);
+    } else {
+      setCompleting(true);
+      setTimeout(() => onComplete(task.id), 200);
+    }
   };
 
   return (
@@ -212,8 +219,8 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
           width: 20,
           height: 20,
           borderRadius: '50%',
-          border: `1.5px solid ${hovered ? 'var(--accent)' : 'var(--checkbox-border)'}`,
-          background: 'transparent',
+          border: `1.5px solid ${isCompleted ? 'var(--accent)' : hovered ? 'var(--accent)' : 'var(--checkbox-border)'}`,
+          background: isCompleted ? 'var(--accent)' : 'transparent',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -222,13 +229,19 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
           marginTop: 2,
           transition: 'border-color 80ms ease',
           padding: 0,
+          color: 'white',
+          fontSize: 11,
+          lineHeight: 1,
         }}
-        aria-label="Mark complete"
-      />
+        aria-label={isCompleted ? 'Reopen task' : 'Mark complete'}
+        title={isCompleted ? 'Click to reopen' : undefined}
+      >
+        {isCompleted && '✓'}
+      </button>
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0, paddingLeft: 12, cursor: onOpen ? 'pointer' : 'default' }} onClick={() => onOpen?.(task.id)}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: isCompleted ? 0.45 : 1 }}>
           {task.projectColour && (
             <span
               style={{
@@ -244,7 +257,8 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
             style={{
               fontSize: 15,
               fontWeight: 400,
-              color: 'var(--text-primary)',
+              color: isCompleted ? 'var(--text-muted)' : 'var(--text-primary)',
+              textDecoration: isCompleted ? 'line-through' : 'none',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -262,6 +276,7 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
               marginTop: 3,
               fontSize: 12,
               color: dateInfo.overdue ? 'var(--text-overdue)' : 'var(--text-upcoming)',
+              opacity: isCompleted ? 0.45 : 1,
             }}
           >
             <span>📅</span>
@@ -269,7 +284,7 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
           </div>
         )}
         {showProjectLabel && task.project && task.project.toLowerCase() !== 'inbox' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, opacity: isCompleted ? 0.45 : 1 }}>
             {task.projectColour && (
               <span
                 style={{
@@ -295,6 +310,7 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
           paddingRight: 8,
           flexShrink: 0,
           marginTop: 2,
+          opacity: isCompleted ? 0.45 : 1,
         }}
       >
         {/* Unsynced calendar indicator — task has a date but no google_event_id */}

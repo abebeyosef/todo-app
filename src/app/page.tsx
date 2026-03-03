@@ -8,6 +8,7 @@ import { Project } from '@/types/project';
 import TaskItem from '@/components/TaskItem';
 import InlineTaskForm from '@/components/InlineTaskForm';
 import TaskDetailPanel from '@/components/TaskDetailPanel';
+import CompletedSection from '@/components/CompletedSection';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/lib/toast';
 
@@ -95,6 +96,8 @@ function dbToTask(row: DbTask): Task {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const PRIORITY_ORDER = { p1: 0, p2: 1, p3: 2 };
 const byPriority = (a: Task, b: Task) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+const byCompletedAt = (a: Task, b: Task) =>
+  (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0);
 
 function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
 
@@ -348,6 +351,7 @@ export default function TasksPage() {
 
   // ── Derived data ────────────────────────────────────────────────────────────
   const activeTasks = tasks.filter((t) => !t.completed);
+  const completedTasks = [...tasks.filter((t) => t.completed)].sort(byCompletedAt);
 
   const viewTasks = selectedProjectId
     ? activeTasks.filter((t) => t.projectId === selectedProjectId)
@@ -358,6 +362,18 @@ export default function TasksPage() {
   const today = new Date();
   const in7Days = new Date(today);
   in7Days.setDate(today.getDate() + 7);
+
+  const renderCompleted = (tasks: Task[], storageKey: string) => (
+    <CompletedSection
+      tasks={tasks}
+      onComplete={completeTask}
+      onDelete={deleteTask}
+      onPriorityChange={updatePriority}
+      onOpen={(id) => setSelectedTaskId(id)}
+      onCalendarSync={accessToken ? calendarSync : undefined}
+      storageKey={storageKey}
+    />
+  );
 
   const renderTask = (task: Task) => (
     <TaskItem
@@ -420,6 +436,7 @@ export default function TasksPage() {
     const todayTasks = viewTasks.filter((t) => t.scheduledAt && sameDay(t.scheduledAt, now));
     const sorted = (list: Task[]) => [...list].sort(byPriority);
     const todayCount = activeTasks.filter((t) => t.scheduledAt && sameDay(t.scheduledAt, now)).length;
+    const todayCompleted = completedTasks.filter((t) => t.completedAt && sameDay(t.completedAt, now));
 
     return (
       <>
@@ -475,6 +492,7 @@ export default function TasksPage() {
               )}
               <AddTaskRow />
             </div>
+            {renderCompleted(todayCompleted, 'completed-today-open')}
           </>
         )}
       </>
@@ -800,13 +818,18 @@ export default function TasksPage() {
                 )}
                 {[...viewTasks].sort(byPriority).map(renderTask)}
                 <AddTaskRow projectId={selectedProjectId} />
+                {renderCompleted(
+                  completedTasks.filter((t) => t.projectId === selectedProjectId),
+                  `completed-project-${selectedProjectId}-open`
+                )}
               </>
             ) : (
               // All projects grouped
               <>
                 {projects.map((p) => {
                   const pts = viewTasks.filter((t) => t.projectId === p.id);
-                  if (pts.length === 0) return null;
+                  const pCompleted = completedTasks.filter((t) => t.projectId === p.id);
+                  if (pts.length === 0 && pCompleted.length === 0) return null;
                   return (
                     <div key={p.id} style={{ marginBottom: 32 }}>
                       <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
@@ -818,6 +841,7 @@ export default function TasksPage() {
                       </div>
                       {[...pts].sort(byPriority).map(renderTask)}
                       <AddTaskRow projectId={p.id} />
+                      {renderCompleted(pCompleted, `completed-project-${p.id}-open`)}
                     </div>
                   );
                 })}
@@ -848,6 +872,7 @@ export default function TasksPage() {
   // ── Backlog view ───────────────────────────────────────────────────────────
   function renderBacklog() {
     const backlog = viewTasks.filter((t) => t.isBacklog);
+    const backlogCompleted = completedTasks.filter((t) => t.isBacklog);
     return (
       <>
         <div style={{ marginBottom: 24 }}>
@@ -869,6 +894,7 @@ export default function TasksPage() {
             )}
             {[...backlog].sort(byPriority).map(renderTask)}
             <AddTaskRow />
+            {renderCompleted(backlogCompleted, 'completed-backlog-open')}
           </>
         )}
       </>

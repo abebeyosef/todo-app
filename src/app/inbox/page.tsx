@@ -6,6 +6,7 @@ import { Task } from '@/types/task';
 import { Project } from '@/types/project';
 import TaskItem from '@/components/TaskItem';
 import InlineTaskForm from '@/components/InlineTaskForm';
+import CompletedSection from '@/components/CompletedSection';
 import { useToast } from '@/lib/toast';
 
 // ── DB → app type ───────────────────────────────────────────────────────────
@@ -106,11 +107,10 @@ export default function InboxPage() {
         );
       }
 
-      // Fetch ALL incomplete tasks — no project filter
+      // Fetch ALL tasks (active + completed) — no project filter
       const { data: taskData, error: tErr } = await supabase
         .from('tasks')
-        .select('*, projects(name, colour)')
-        .eq('completed', false);
+        .select('*, projects(name, colour)');
 
       if (tErr) console.error('Failed to load all tasks:', tErr);
       if (taskData) setTasks((taskData as DbTask[]).map(dbToTask));
@@ -225,6 +225,9 @@ export default function InboxPage() {
   };
 
   const activeTasks = tasks.filter((t) => !t.completed);
+  const completedTasksAll = [...tasks.filter((t) => t.completed)].sort(
+    (a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0)
+  );
   const sortedTasks = sortTasks(activeTasks, sort);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -335,6 +338,15 @@ export default function InboxPage() {
             />
           ))}
           <AddTaskRow />
+          <CompletedSection
+            tasks={completedTasksAll}
+            onComplete={completeTask}
+            onDelete={deleteTask}
+            onPriorityChange={updatePriority}
+            onOpen={(id) => setSelectedTaskId(id)}
+            showProjectLabel
+            storageKey="completed-alltasks-open"
+          />
         </>
       )}
     </>
