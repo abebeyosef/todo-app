@@ -35,12 +35,13 @@ function escapeHTML(str: string): string {
 function getTokenRanges(text: string, projectNames: string[]): TokenRange[] {
   const ranges: TokenRange[] = [];
 
-  // #project at start — only highlight if it matches a known project
-  const projectMatch = text.match(/^#(\S+)/);
+  // #project — highlight anywhere it appears, if it matches a known project
+  const projectRe = /#([a-zA-Z]\w*)/g;
+  const projectMatch = projectRe.exec(text);
   if (projectMatch) {
     const name = projectMatch[1].toLowerCase();
     if (projectNames.some((p) => p.toLowerCase() === name)) {
-      ranges.push({ start: 0, end: projectMatch[0].length, type: 'project' });
+      ranges.push({ start: projectMatch.index, end: projectMatch.index + projectMatch[0].length, type: 'project' });
     }
   }
 

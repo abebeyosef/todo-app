@@ -128,6 +128,7 @@ export default function InlineTaskForm({ projects, onAdd, onCancel, defaultProje
       projectId: projectId ?? undefined,
       projectColour: selectedProject?.colour,
       scheduledAt: scheduledAt ?? parsed.scheduledAt,
+      duration: parsed.duration,
       priority,
       isBacklog: !scheduledAt && !parsed.scheduledAt,
     };

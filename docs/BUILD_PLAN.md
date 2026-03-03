@@ -64,6 +64,8 @@ These are moments where Claude Code cannot proceed without real information from
 | 21 | Inbox View, Task Detail, Habit Types, Search, Health Log, Calendars | [x] Done |
 | 22 | Inbox as Master Task Overview | [x] Done |
 | 23 | Google Calendar Sync Reliability | [x] Done |
+| 24 | Duration in Upcoming View & Free-order NL Parsing | [ ] Pending |
+| 25 | Completed Tasks Visible In-Place | [ ] Pending |
 
 ---
 
@@ -2399,4 +2401,227 @@ For tasks that were saved without a `google_event_id` (because the sync failed),
 
 ---
 
-*End of Build Plan — 23 Phases*
+---
+
+## Phase 24 — Duration in Upcoming View & Free-order NL Parsing
+**What this does:** Fixes two related issues with task input and display. First, tasks in the Upcoming week view always appear as 30-minute blocks regardless of the duration you set — this is because the block height calculation falls back to 30 when `task.duration` is null, suggesting duration is not being saved to or read back from Supabase correctly. Second, the natural language parser only recognises `#project`, duration, and priority tokens when they appear in specific positions (project must be first); this phase makes token order completely free so `#project`, `[duration]`, `p1/p2/p3`, date, and time can appear anywhere in the input string.
+
+**Status:** [ ] Pending
+
+---
+
+### Steps for Claude Code
+
+#### 24.1 — Diagnose and fix duration not persisting to Supabase
+
+**Approach:** The INSERT payload in `addTask()` already includes `duration: task.duration ?? null`, and `dbToTask` maps it correctly, so the Supabase column is fine. The real bug is in `InlineTaskForm.tsx` `submit()`: the `Task` object it builds is missing `duration: parsed.duration` — so `task.duration` is always `undefined` when `addTask` receives it, causing `null` to be inserted every time. Fix: add `duration: parsed.duration` to the task literal in `submit()`.
+
+The Upcoming view computes block height on line 726 of `src/app/page.tsx`:
+```ts
+const height = Math.max(((t.duration ?? 30) / 60) * HOUR_HEIGHT, 28);
+```
+If `t.duration` is null, every block defaults to 30 minutes regardless of what was typed. The bug is upstream — duration is parsed correctly by `parseTask.ts` but may not be reaching the Supabase `tasks` table.
+
+1. Open `src/app/page.tsx` and find the Supabase INSERT payload for new tasks (look for the `supabase.from('tasks').insert(...)` call, likely in `addTask()`).
+2. Check whether `duration` is included in the insert payload. If it is missing, add it: `duration: task.duration ?? null`.
+3. Also check the Supabase SELECT query that fetches tasks on page load — confirm `duration` is included (it should be in a `select('*')` or explicit column list).
+4. Check `src/types/task.ts` (or wherever `Task` is defined) — confirm `duration` is typed as `number | null` and not accidentally omitted or named differently from the database column.
+5. To verify the fix: create a task with `[1hr]` duration, check the Supabase dashboard to confirm `duration = 60` is saved, then check the Upcoming view to confirm the block height is now 60px (1 hour at 60px/hr) rather than 30px.
+
+**Completion Notes:** Root cause was `InlineTaskForm.tsx` `submit()` not copying `parsed.duration` into the `Task` object. Added `duration: parsed.duration` to the task literal. The INSERT payload and `dbToTask` mapper were already correct. No Supabase schema changes needed.
+
+---
+
+#### 24.2 — Refactor NL parser to support free token order
+
+Currently `src/lib/parseTask.ts` strips `#project` from the **start** of the raw string first, which means project tags anywhere else in the input are silently ignored. The fix is to scan the full input for all token types in a single pass — regardless of position — strip them all out, and treat whatever text remains as the task name plus any date/time expression.
+
+The three examples that must all produce identical output after this fix:
+- `#App Make an update tomorrow 12:00 [1hr]`
+- `Make an update tomorrow 12pm [1hr] #app`
+- `Make an #app update tomorrow at 12 for [1hr]`
+
+All three should parse to: name = "Make an update", project = "app", date = tomorrow 12:00, duration = 60min.
+
+**Implementation steps:**
+
+1. Open `src/lib/parseTask.ts`.
+
+2. Replace the current sequential-strip approach with a **collect-then-strip** approach:
+
+   a. **Collect all tokens first** (scan the full input string, record each match and its position):
+      - Project: `/\#([a-zA-Z]\w*)/g` — find ALL `#tag` matches (take the first one as project, ignore duplicates)
+      - Duration: `/\[(\d+(?:\.\d+)?)\s*(hr?|hour|min?|minutes?)\]/gi`
+      - Priority: `/\b(p[123])\b/gi`
+      - The word "for" immediately before a `[duration]` token should also be stripped (e.g. `for [1hr]` → strip both `for` and `[1hr]`)
+
+   b. **Strip all found tokens from the raw string** to produce a clean remainder string. Do this by building a list of `[startIndex, endIndex]` ranges to remove, then reconstruct the string with those ranges cut out.
+
+   c. **Run chrono-node on the clean remainder** to extract date/time as before. After chrono-node runs, strip the matched date/time text from the remainder to get the final task name.
+
+   d. **Clean up the task name**: trim whitespace, collapse multiple spaces into one, remove any leading/trailing punctuation left by stripping (commas, hyphens, "at", "for", "on" at the boundaries).
+
+3. Update the test examples in the comment block at the top of `parseTask.ts` to include the three new free-order examples.
+
+4. Also update `src/lib/highlightTask.ts` (the mirror div highlighter) to use the same position-independent token detection so inline highlighting still works correctly when tokens appear mid-sentence or at the end.
+
+**Approach:** Rewrite `parseTask.ts` with a collect-then-strip approach: (1) scan the raw input for `#tag`, `[duration]`, `p1/p2/p3` using regex with `.exec()` to capture start/end positions; (2) if "for" immediately precedes the `[duration]` bracket, extend the removal range to include it; (3) sort all removal ranges and reconstruct the remainder string by skipping those spans; (4) run chrono on the remainder and strip the date/time match; (5) clean up double spaces and boundary prepositions. Update test cases in the comment block. Also update `highlightTask.ts` to use `/#([a-zA-Z]\w*)/g` instead of anchoring at position 0.
+
+**Completion Notes:** Rewrote `parseTask.ts` with the collect-then-strip approach. Key changes: `#project` now detected with `/#([a-zA-Z]\w*)/g` scanning the full string (not anchored to start); "for" immediately before `[duration]` is included in the removal range; all removals are sorted and the remainder is reconstructed in a single pass; boundary prepositions ("at", "for", "on", "from") are stripped after all tokens are removed. Updated comment block with 10 test cases including all free-order examples. Updated `highlightTask.ts` to also detect `#project` anywhere using the same regex approach.
+
+---
+
+#### 24.3 — Test all token order combinations
+
+Before deploying, manually verify the following inputs all parse correctly (log output to console if helpful):
+
+| Input | Expected name | Project | Date/Time | Duration | Priority |
+|-------|---------------|---------|-----------|----------|----------|
+| `#App Make an update tomorrow 12:00 [1hr]` | Make an update | app | tomorrow 12:00 | 60 | — |
+| `Make an update tomorrow 12pm [1hr] #app` | Make an update | app | tomorrow 12:00 | 60 | — |
+| `Make an #app update tomorrow at 12 for [1hr]` | Make an update | app | tomorrow 12:00 | 60 | — |
+| `Call dentist friday 3pm [30min] p1 #health` | Call dentist | health | friday 15:00 | 30 | p1 |
+| `Buy milk` | Buy milk | — | — | — | — |
+| `[2hr] p2 #work standup tomorrow 9am` | standup | work | tomorrow 09:00 | 120 | p2 |
+
+Also verify inline highlighting in the task input field correctly highlights each token regardless of where it appears.
+
+**Approach:** Build the project and use the TypeScript compiler output to confirm no errors. Then write a small inline test script using `tsx` (or `ts-node`) to call `parseTask` with each case and compare to expected output. Since `parseTask.ts` is pure TS with no DOM dependencies this runs directly in Node.
+
+**Completion Notes:** Ran an inline Node script against all 6 plan test cases (3 free-order + Call dentist + Buy milk + [2hr] leading). All 6/6 passed. The parser correctly extracts project, name, duration, date, and priority regardless of token order.
+
+---
+
+#### 24.4 — Deploy
+
+1. Run `npm run build` locally — fix any TypeScript errors.
+2. Commit: `git commit -m "Phase 24 — fix duration in upcoming view, free-order NL token parsing"`
+3. Push to GitHub, confirm Vercel deploys successfully.
+4. Smoke-test on the live URL: create tasks with duration set in different positions, check Upcoming view block heights are correct.
+
+**Approach:** Run `npm run build` to catch any TypeScript errors introduced by the parser rewrite. Files changed are `src/lib/parseTask.ts`, `src/lib/highlightTask.ts`, and `src/components/InlineTaskForm.tsx` — all pure TypeScript with no new dependencies.
+
+**Completion Notes:** *(Claude Code fills this in after completing 24.4)*
+
+---
+
+### Success Criteria
+- A task created with `[1hr]` duration shows a 60px-tall block in the Upcoming week view (not 30px)
+- A task created with `[30min]` duration shows a 30px-tall block
+- `#project` tag is detected and applied whether it appears at the start, middle, or end of the input
+- `[duration]` is detected whether it appears before or after the task name, date, or project tag
+- The word "for" immediately before `[duration]` is stripped cleanly from the task name
+- `p1/p2/p3` priority is detected in any position
+- Inline token highlighting in the input field works correctly for all token positions
+- All existing parsing behaviour (backlog keywords, date/time detection) is unaffected
+
+---
+
+---
+
+## Phase 25 — Completed Tasks Visible In-Place
+**What this does:** Instead of completed tasks disappearing entirely, they now appear at the bottom of each view section as greyed-out rows with a strikethrough task name. All task details (project, date, duration, priority) are retained and visible. Clicking the checkbox again reopens the task and returns it to the active list. A collapsible "Completed" section header keeps the list tidy when there are many completed tasks.
+
+**Status:** [ ] Pending
+
+### Background (from code investigation)
+- Completed tasks are already fetched from Supabase — the query on line 165 of `src/app/page.tsx` has no `completed` filter
+- They are filtered out client-side: `const activeTasks = tasks.filter((t) => !t.completed)` (line 350)
+- The toggle function on line 252 already handles both completing AND re-opening a task (it sets `completed = !task.completed`), so reopen functionality requires no new logic — just exposing completed tasks in the UI
+- The fix is: derive a `completedTasks` array from `tasks`, render it below active tasks in each view, and style it appropriately
+
+---
+
+### Steps for Claude Code
+
+#### 25.1 — Derive completed tasks and pass them into each view renderer
+
+1. Open `src/app/page.tsx`.
+2. Below line 350 (`const activeTasks = ...`), add:
+   ```ts
+   const completedTasks = tasks.filter((t) => t.completed);
+   ```
+3. Note that `completedTasks` should NOT be sorted by the existing sort functions — sort completed tasks by `completedAt` descending (most recently completed first) so the last thing you ticked off appears at the top of the completed section.
+4. Add a helper at the top of the file:
+   ```ts
+   const byCompletedAt = (a: Task, b: Task) =>
+     (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0);
+   ```
+
+**Completion Notes:** *(Claude Code fills this in after completing 25.1)*
+
+---
+
+#### 25.2 — Style TaskItem for completed state
+
+1. Open `src/components/TaskItem.tsx`.
+2. Add a `isCompleted` prop (or derive it from `task.completed` which is already on the task object — use that directly rather than adding a new prop).
+3. When `task.completed` is true, apply the following styles to the task row:
+   - Task name: `textDecoration: 'line-through'`, `color: 'var(--text-muted)'` (the existing muted colour token)
+   - Row background: no change (keep it white/transparent — the strikethrough and muted text are enough visual signal)
+   - Checkbox: show as checked/filled in the accent colour, same as it does today when completing
+   - Project label, date, priority flag: also render at reduced opacity (`opacity: 0.45`) so they recede but are still readable
+   - The row should still be hoverable and the checkbox still clickable (to reopen)
+4. No other changes to TaskItem interaction — the existing `onToggle` already handles the reopen.
+
+**Completion Notes:** *(Claude Code fills this in after completing 25.2)*
+
+---
+
+#### 25.3 — Add a collapsible "Completed" section to each view
+
+Completed tasks should appear below active tasks in a collapsible section. This keeps the list clean when there are many completed tasks — Yosef can expand it when needed.
+
+1. Create a small reusable component (inline in `page.tsx` or as `src/components/CompletedSection.tsx`) that renders:
+   - A section divider line
+   - A clickable header row: a chevron icon (Lucide `ChevronDown` / `ChevronRight`) + the text **"Completed"** + a count badge showing how many completed tasks are in this section (e.g. `3`)
+   - When expanded (default: **collapsed**): renders the completed task rows below
+   - Collapse/expand state stored in `useState` — no persistence needed
+   - Header styling: `fontSize: 13`, `color: 'var(--text-muted)'`, `fontWeight: 500`; subtle, not prominent
+
+2. Persist the collapsed/expanded preference to `localStorage` under the key `'completed-section-open'` so it remembers your preference across page loads.
+
+**Completion Notes:** *(Claude Code fills this in after completing 25.3)*
+
+---
+
+#### 25.4 — Wire completed tasks into each view
+
+Add the `<CompletedSection>` to each view that shows tasks. The completed tasks shown in each section should be **scoped to that view** — e.g. in the Today view, only show tasks that were completed today; in By Project, only show completed tasks for that project.
+
+1. **Today view** (`renderToday`): show completed tasks whose `completedAt` is today. Place `<CompletedSection>` after the today task list (below overdue and today sections).
+
+2. **By Project view** (`renderByProject`): within each project's task list, show that project's completed tasks in a `<CompletedSection>` at the bottom of that project block.
+
+3. **Backlog view**: show completed tasks that had no `scheduledAt` (i.e. were backlog tasks when completed). Place `<CompletedSection>` at the bottom.
+
+4. **All Tasks / Inbox view** (`src/app/inbox/page.tsx`): show all completed tasks in a `<CompletedSection>` at the bottom. No date-scoping here — show everything.
+
+5. **Upcoming view**: do NOT show completed tasks in the week grid (calendar grids with completed blocks would be cluttered). Skip this view.
+
+**Completion Notes:** *(Claude Code fills this in after completing 25.4)*
+
+---
+
+#### 25.5 — Deploy
+
+1. Run `npm run build` locally — fix any TypeScript errors.
+2. Commit: `git commit -m "Phase 25 — completed tasks visible in-place with strikethrough, collapsible section, reopen on click"`
+3. Push to GitHub, confirm Vercel deploys successfully.
+4. Smoke-test: complete a task, confirm it appears below the active list with strikethrough; click the checkbox to reopen it, confirm it returns to the active list.
+
+**Completion Notes:** *(Claude Code fills this in after completing 25.5)*
+
+---
+
+### Success Criteria
+- Completed tasks appear at the bottom of each view (Today, By Project, Backlog, All Tasks) in a collapsible "Completed" section
+- Completed task rows show a strikethrough task name and muted colour; all details (project, date, priority) are still visible at reduced opacity
+- The "Completed" section is collapsed by default; clicking the header expands/collapses it; the preference persists across page loads
+- The count badge next to "Completed" shows the correct number of tasks in that section
+- Clicking the checkbox on a completed task reopens it and returns it to the active list immediately
+- The Upcoming week grid view is unchanged (no completed blocks in the calendar)
+
+---
+
+*End of Build Plan — 25 Phases*
