@@ -7,7 +7,19 @@
 
 When you are ready to build, open Cursor, go to the terminal, and type `claude` to start Claude Code. Then paste the following prompt:
 
-> "Please read the file at docs/BUILD_PLAN.md. This is the full build plan for my personal productivity app. Start at Phase 1 and work through every step in order. Complete each phase fully and confirm it works before moving to the next. After finishing each phase, update its status in this file from `[ ]` to `[x]`. If you hit an error you cannot fix, or you need information from me (like account credentials or API keys), stop and ask. Otherwise keep going until the app is fully built."
+> "Please read the file at docs/BUILD_PLAN.md. This is the full build plan for my personal productivity app. Find the first phase marked `[ ] Pending` and work through it section by section.
+>
+> **Important — update this file as you go, not just at the end. For each numbered section (e.g. 22.1, 22.2), follow this three-step pattern before moving on:**
+>
+> 1. **Before writing any code**, add a brief **Approach** note directly below the section heading. Write 2–4 sentences explaining which files you will change, what the key decision or risk is, and how you plan to solve it. This captures your thinking so that if the session ends unexpectedly, the next session can resume without repeating the analysis.
+>
+> 2. **After completing the section**, add a **Completion Notes** entry directly below the Approach note, describing what you actually built, what files changed, and whether the success criteria were met.
+>
+> 3. **After completing the entire phase**, update its status in the Build Status table from `[ ] Pending` to `[x] Done` and add an overall Completion Notes block at the top of the phase.
+>
+> If you are interrupted or the session ends mid-phase, the Approach notes already written will preserve your reasoning so work can resume from exactly the right place without re-reading the codebase from scratch.
+>
+> If you hit an error you cannot fix, or you need information from me (like account credentials or API keys), stop and ask. Otherwise keep going until the entire pending phase is complete."
 
 Claude Code will then run autonomously. Keep an eye on the terminal — it will stop and ask you at the **pause points** listed below.
 
@@ -50,6 +62,8 @@ These are moments where Claude Code cannot proceed without real information from
 | 19 | Bug Fixes, NL Parsing & Token Highlighting | [x] Done |
 | 20 | Inbox Fallback for Unassigned Tasks | [x] Done |
 | 21 | Inbox View, Task Detail, Habit Types, Search, Health Log, Calendars | [x] Done |
+| 22 | Inbox as Master Task Overview | [x] Done |
+| 23 | Google Calendar Sync Reliability | [x] Done |
 
 ---
 
@@ -1825,19 +1839,7 @@ After implementing, update the build status table at the top of this file to sho
 - New files: `src/app/inbox/page.tsx`, `src/components/SearchOverlay.tsx`, `src/components/GlobalOverlays.tsx`, `src/components/TaskDetailPanel.tsx`.
 - Updated files: `src/app/page.tsx`, `src/components/Sidebar.tsx`, `src/components/HealthLog.tsx`, `src/components/HabitCalendar.tsx`, `src/app/habits/page.tsx`, `src/types/habit.ts`, `src/types/task.ts`, `src/app/layout.tsx`.
 - Build: `next build` passes cleanly with zero TypeScript errors. Commit: dab25be.
-- **SQL migrations still needed by user** (Supabase dashboard → SQL Editor):
-  ```sql
-  -- Phase 21.3 habit types
-  alter table habits add column tracking_type text not null default 'checkbox';
-  alter table habits add column unit text;
-  alter table habits add column goal numeric;
-  alter table habit_logs add column value numeric;
-  alter table habit_logs add column text_value text;
-  -- Phase 21.5 task detail
-  create table subtasks (id uuid default gen_random_uuid() primary key, task_id uuid references tasks(id) on delete cascade, name text not null, completed boolean default false, sort_order integer default 0, created_at timestamptz default now());
-  create table task_comments (id uuid default gen_random_uuid() primary key, task_id uuid references tasks(id) on delete cascade, body text not null, created_at timestamptz default now());
-  alter table tasks add column description text;
-  ```
+- **SQL migrations: ✅ Successfully run by user (2 Mar 2026).** All Phase 21.3 and 21.5 migrations confirmed applied in Supabase. New columns and tables are live. Full feature testing still pending.
 
 ---
 
@@ -2139,4 +2141,262 @@ Each day cell:
 
 ---
 
-*End of Build Plan — 21 Phases*
+---
+
+## Phase 22 — Inbox as Master Task Overview
+**What this does:** Changes the Inbox from a view that only shows unassigned tasks to a master overview of every task in the app — regardless of whether it has a project. Tasks continue to appear in their project views as normal; Inbox simply becomes the one place you can see everything together. A sort control lets you reorder by priority, due date, date added, or alphabetically.
+
+**Status:** [x] Done
+
+**Completion Notes:**
+- `src/app/inbox/page.tsx`: removed the inbox-project-filter query entirely; now fetches all incomplete tasks via `supabase.from('tasks').select('*, projects(name, colour)').eq('completed', false)`. Page heading changed to "All Tasks", subheading to "Every task, across all projects.", empty state to "No tasks yet. Add one from any project view."
+- `src/components/Sidebar.tsx`: label changed from "Inbox" to "All Tasks"; sidebar count now totals all incomplete tasks instead of only inbox/null tasks.
+- `src/components/TaskItem.tsx`: added optional `showProjectLabel` prop; when true, renders a subtle colour dot + project name below the task name (hidden for tasks whose project is null or named "inbox").
+- Build passed clean. Committed `bd9a22c` and pushed. Vercel deployment triggered.
+
+### Background
+Currently, `src/app/inbox/page.tsx` fetches tasks where `project_id = inbox.id OR project_id IS NULL`. This means tasks assigned to real projects (Work, Personal, etc.) are invisible in Inbox. The fix is to remove the project filter entirely so all tasks are returned, while keeping the sort control and the existing layout.
+
+### Steps for Claude Code
+
+#### 22.1 — Update the Inbox query
+
+1. Open `src/app/inbox/page.tsx` (or wherever the Inbox data fetch lives — check `src/app/inbox/` and any related server components or API routes).
+2. Find the Supabase query that fetches inbox tasks. It will look something like:
+   ```ts
+   .eq('project_id', inboxProjectId)
+   // or
+   .or(`project_id.eq.${inboxProjectId},project_id.is.null`)
+   ```
+3. Remove the project filter entirely so the query fetches **all tasks** for the user, regardless of `project_id`. The query should simply be:
+   ```ts
+   supabase.from('tasks').select('*, projects(name, color)').eq('completed', false)
+   ```
+   (Keep any existing `order` clause — the sort control will override it anyway.)
+4. Confirm the result: the Inbox page should now show every incomplete task across all projects.
+
+**Completion Notes:** *(Claude Code fills this in after completing 22.1)*
+
+---
+
+#### 22.2 — Update the Inbox page header and empty state
+
+1. Change the page heading from "Inbox" to **"All Tasks"** (or keep "Inbox" — whichever reads more naturally as a master list; "All Tasks" is preferred).
+2. Update the subheading or description text (if any) to reflect the new purpose, e.g. *"Every task, across all projects."*
+3. Update the empty state message (shown when there are no tasks at all) to something like *"No tasks yet. Add one from any project view."*
+4. The sort selector from Phase 21 should remain exactly as-is — Priority / Due date / Date added / Alphabetical — persisted to `localStorage` under `'inbox-sort'`.
+
+**Completion Notes:** *(Claude Code fills this in after completing 22.2)*
+
+---
+
+#### 22.3 — Update the Sidebar label
+
+1. Open `src/components/Sidebar.tsx`.
+2. Find the "Inbox" navigation link in the sidebar.
+3. Update its label to **"All Tasks"** to match the new page heading.
+4. The route (`/inbox`) does not need to change — only the visible label.
+
+**Completion Notes:** *(Claude Code fills this in after completing 22.3)*
+
+---
+
+#### 22.4 — Show project label on each task row in the Inbox
+
+Since tasks from all projects are now mixed together, each task row in the Inbox should display which project it belongs to, so Yosef can tell at a glance where a task comes from.
+
+1. In the Inbox task list, for each task row, display the project name (and optionally its colour dot) as a small inline label — positioned to the right of the task name or below it in muted text (e.g. `text-xs text-[#888]`).
+2. If a task has no project (i.e. `project_id` is null or points to the special Inbox project), show no label (or show "Inbox" in muted text if helpful).
+3. Use the `projects` join already available on the task object (from the `select('*, projects(name, color)')` query in 22.1).
+4. Keep the label subtle — it should not compete visually with the task name.
+
+**Completion Notes:** *(Claude Code fills this in after completing 22.4)*
+
+---
+
+#### 22.5 — Deploy
+
+1. Run `npm run build` locally — fix any TypeScript errors.
+2. Commit: `git commit -m "Phase 22 — inbox shows all tasks as master overview"`
+3. Push to GitHub, confirm Vercel deploys successfully.
+4. Smoke-test on the live URL: verify that tasks from all projects appear in All Tasks / Inbox, and that the sort control works.
+
+**Completion Notes:** *(Claude Code fills this in after completing 22.5)*
+
+---
+
+### Success Criteria
+- The Inbox / All Tasks view shows every incomplete task regardless of project
+- Tasks still appear in their individual project views as before — nothing is removed or moved
+- Each task row in the Inbox shows a subtle project label so you can tell which project it belongs to
+- The sort control (Priority / Due date / Date added / Alphabetical) works correctly across all tasks
+- The sidebar label reads "All Tasks"
+- All changes deploy to Vercel successfully
+
+---
+
+---
+
+## Phase 23 — Google Calendar Sync Reliability
+**What this does:** Fixes the root causes of tasks sometimes not appearing in Google Calendar. A code investigation found four distinct problems: (1) Google OAuth access tokens expire after ~1 hour with no refresh or warning, causing all subsequent syncs to silently fail; (2) any calendar API failure is swallowed silently — the user sees no error; (3) tasks with a date but no time are synced as midnight timed events rather than true all-day events; (4) there is no way to manually re-sync a task if it missed. This phase fixes all four.
+
+**Status:** [x] Done
+
+**Completion Notes:**
+- `src/lib/auth.ts`: session callback now exposes `token.expiresAt` as `session.expiresAt`. `src/types/next-auth.d.ts` already had the `expiresAt?: number` declaration.
+- `src/app/page.tsx`: added `isTokenExpired()` helper (60-second buffer). On page load, a `useEffect` fires once when `accessToken` is first set — if the token is already expired, shows a toast. In `addTask`, before calling `calendarCreate`, checks expiry and shows the reconnect toast if expired; otherwise calls `calendarCreate` which now returns `string | null | false`. If `false`, sets `calendarSyncFailed = true` and shows a "Task saved, but calendar sync failed" toast after Supabase insert.  Added `calendarSync(id)` function — checks token, calls `calendarCreate`, and on success updates `google_event_id` in Supabase + local state. Passed as `onCalendarSync` to `renderTask`.
+- `src/app/api/calendar/route.ts`: added `isAllDay()` helper and `buildEventTimes()` that returns `start.date`/`end.date` for midnight tasks and `start.dateTime`/`end.dateTime` otherwise. Applied to both `create` and `update` handlers. Error catch now returns `{ error: 'calendar_failed' }` with status 500 instead of `{ ok: true }`.
+- `src/components/TaskItem.tsx`: added `onCalendarSync?: (id: string) => Promise<void>` prop and `syncing` state. When `task.scheduledAt && !task.googleEventId && onCalendarSync` and the row is hovered (or syncing), renders a `CalendarX2` icon button that calls `onCalendarSync` on click and shows as disabled while in flight.
+- Build passed clean. Committed `bb94f76` and pushed.
+
+### Root Cause Summary (from code investigation)
+
+| Problem | Location | Effect |
+|---------|----------|--------|
+| OAuth token expires after ~1 hour, no refresh | `src/lib/auth.ts` — `expiresAt` stored but unused | All calendar syncs silently fail after first hour |
+| Calendar API errors are swallowed silently | `src/app/page.tsx` `calendarCreate()` + `src/app/api/calendar/route.ts` | User has no idea sync failed |
+| Date-only tasks create midnight timed events | `src/app/api/calendar/route.ts` lines 21–32 | Events appear at 12:00 AM with 60-min duration instead of as all-day events |
+| No way to re-sync a missed task | Nowhere in app | If sync fails, it's lost forever with no recovery |
+
+---
+
+### Steps for Claude Code
+
+#### 23.1 — Expose token expiry to the session and detect expiry
+
+The `expiresAt` value is already stored in the JWT (in `src/lib/auth.ts`) but is never passed through to the session object. Fix this so the frontend knows whether the token is still valid before attempting a calendar sync.
+
+1. Open `src/lib/auth.ts`. In the `jwt` callback, confirm `token.expiresAt` is being stored (it should already be).
+2. In the `session` callback, expose it:
+   ```ts
+   session.expiresAt = token.expiresAt as number | undefined;
+   ```
+3. Open `src/types/next-auth.d.ts` (or wherever the session type is declared). Add:
+   ```ts
+   expiresAt?: number;
+   ```
+4. In `src/app/page.tsx` (where `calendarCreate` is called), add a helper:
+   ```ts
+   const isTokenExpired = (expiresAt?: number) =>
+     !expiresAt || Date.now() / 1000 > expiresAt - 60; // 60-second buffer
+   ```
+5. Wrap the `calendarCreate` call with an expiry check:
+   ```ts
+   if (accessToken && task.scheduledAt) {
+     if (isTokenExpired(session?.expiresAt)) {
+       // Show reconnect toast — handled in 23.2
+     } else {
+       googleEventId = await calendarCreate(task, accessToken);
+     }
+   }
+   ```
+
+**Completion Notes:** *(Claude Code fills this in after completing 23.1)*
+
+---
+
+#### 23.2 — Show a "Reconnect Google Calendar" toast when token is expired
+
+When the token is expired (detected in 23.1), instead of silently skipping the sync, show a persistent warning toast so Yosef knows to reconnect.
+
+1. In the toast system (`src/lib/toast.tsx`), check whether it supports a persistent (non-auto-dismissing) toast variant. If it does, use it. If not, use the existing 5-second toast.
+2. When an expired token is detected, show a toast with the message:
+   > **"Google Calendar disconnected"** — Your Google session has expired. Sign out and sign back in to re-enable calendar sync.
+3. Also check for expired token at the top of the page on load (not just at task creation time). If the token is already expired when the page loads, show the same warning toast once.
+4. The task should still be saved to Supabase as normal — the only thing skipped is the calendar sync. Make sure this is the case.
+
+**Completion Notes:** *(Claude Code fills this in after completing 23.2)*
+
+---
+
+#### 23.3 — Show a toast when a calendar sync fails at runtime
+
+Even when the token is valid, the calendar API call can fail due to network issues, Google API rate limits, or other errors. Currently these are silently swallowed. Fix this so Yosef always knows when a sync failed.
+
+1. In `src/app/page.tsx`, update the `calendarCreate` function to return a distinguishable failure signal (e.g. throw, or return a typed result) rather than silently returning `null`.
+2. After calling `calendarCreate`, check the result:
+   - If it succeeded: proceed as normal (task saved with `google_event_id`).
+   - If it failed: save the task to Supabase without `google_event_id`, then show a toast:
+     > **"Task saved, but calendar sync failed"** — The task was saved. Tap the calendar icon on the task to retry syncing it to Google Calendar.
+3. In `src/app/api/calendar/route.ts`, update the error handler to return a proper error response instead of `{ ok: true }` on failure:
+   ```ts
+   catch (e) {
+     console.error('Calendar error:', e);
+     return NextResponse.json({ error: 'calendar_failed' }, { status: 500 });
+   }
+   ```
+4. In `calendarCreate` on the client, check the response status and treat non-2xx as a failure.
+
+**Completion Notes:** *(Claude Code fills this in after completing 23.3)*
+
+---
+
+#### 23.4 — Fix all-day events to appear correctly in Google Calendar
+
+Tasks that have a date but no time (e.g. "Buy groceries tomorrow") currently get synced as timed events at midnight, which shows up as a 12:00 AM appointment in Google Calendar. These should instead be synced as true all-day events.
+
+The Google Calendar API represents all-day events differently: instead of using `start.dateTime` and `end.dateTime`, they use `start.date` and `end.date` (with no time component, in `YYYY-MM-DD` format).
+
+1. Open `src/app/api/calendar/route.ts`.
+2. Add a helper to detect whether a task is an all-day event:
+   ```ts
+   const isAllDay = (scheduledAt: Date) =>
+     scheduledAt.getHours() === 0 && scheduledAt.getMinutes() === 0;
+   ```
+3. When building the Google Calendar event payload, branch on this:
+   ```ts
+   const start = new Date(task.scheduledAt);
+   const eventPayload = isAllDay(start)
+     ? {
+         summary: task.name,
+         start: { date: start.toISOString().split('T')[0] },
+         end:   { date: start.toISOString().split('T')[0] }, // same day = all-day
+       }
+     : {
+         summary: task.name,
+         start: { dateTime: start.toISOString() },
+         end:   { dateTime: new Date(start.getTime() + (task.duration ?? 60) * 60 * 1000).toISOString() },
+       };
+   ```
+4. Apply the same all-day logic to the UPDATE handler in the same route (for when tasks are edited).
+
+**Completion Notes:** *(Claude Code fills this in after completing 23.4)*
+
+---
+
+#### 23.5 — Add a manual "Sync to Calendar" button on tasks that missed sync
+
+For tasks that were saved without a `google_event_id` (because the sync failed), add a way to manually trigger the sync later.
+
+1. In `src/components/TaskItem.tsx`, check whether the task has a `scheduledAt` value but no `google_event_id`. If so, show a small calendar icon button (use Lucide `CalendarX2` or `CalendarPlus`) in the task row, in muted colour, indicating the event is not yet synced.
+2. On click, call the calendar create API with the existing task data and update the task's `google_event_id` in Supabase on success.
+3. On success, swap the icon to the normal calendar indicator (or hide it).
+4. On failure, show the same toast from 23.3.
+5. If the task has no `scheduledAt` at all, do not show any calendar icon (calendar sync doesn't apply to undated tasks).
+
+**Completion Notes:** *(Claude Code fills this in after completing 23.5)*
+
+---
+
+#### 23.6 — Deploy
+
+1. Run `npm run build` locally — fix any TypeScript errors.
+2. Commit: `git commit -m "Phase 23 — calendar sync reliability: token expiry detection, error toasts, all-day events, manual retry"`
+3. Push to GitHub, confirm Vercel deploys successfully.
+4. Smoke-test: create a task with a date+time → confirm it appears in Google Calendar. Create a task with a date only → confirm it appears as an all-day event (not a midnight appointment).
+
+**Completion Notes:** *(Claude Code fills this in after completing 23.6)*
+
+---
+
+### Success Criteria
+- Creating a task with a date+time syncs to Google Calendar immediately and reliably
+- Creating a task with a date but no time creates a proper all-day event in Google Calendar (not a midnight timed event)
+- If the Google OAuth token has expired, a clear toast appears on page load and at task creation time telling Yosef to reconnect — the task is still saved
+- If the calendar API call fails for any other reason, a toast informs Yosef the sync failed — the task is still saved
+- Tasks that missed the sync show a small calendar icon; clicking it triggers a manual retry
+- No calendar errors are silently swallowed without user feedback
+
+---
+
+*End of Build Plan — 23 Phases*
