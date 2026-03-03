@@ -60,6 +60,7 @@ export default function HabitsPage() {
   const [habitError, setHabitError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'today' | 'calendar'>('today');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const today = todayISO();
 
@@ -224,9 +225,25 @@ export default function HabitsPage() {
   };
 
   const deleteHabit = async (id: string) => {
+    setDeleteError(null);
     try {
+      // Step 1: delete all logs for this habit first (avoids FK violation)
+      const { error: logsError } = await supabase
+        .from('habit_logs')
+        .delete()
+        .eq('habit_id', id);
+      if (logsError) {
+        console.error('Failed to delete habit logs:', logsError);
+        setDeleteError('Could not delete habit logs. Please try again.');
+        return;
+      }
+      // Step 2: delete the habit itself
       const { error } = await supabase.from('habits').delete().eq('id', id);
-      if (error) { console.error('Failed to delete habit:', error); return; }
+      if (error) {
+        console.error('Failed to delete habit:', error);
+        setDeleteError('Could not delete habit. Please try again.');
+        return;
+      }
       setHabits((prev) => prev.filter((h) => h.id !== id));
       setLogValues((prev) => {
         const next = new Map(prev);
@@ -234,8 +251,10 @@ export default function HabitsPage() {
         return next;
       });
       setConfirmDeleteId(null);
+      setDeleteError(null);
     } catch (err) {
       console.error('Unexpected error deleting habit:', err);
+      setDeleteError('An unexpected error occurred.');
     }
   };
 
@@ -800,6 +819,9 @@ export default function HabitsPage() {
                                 </span>
                                 {confirmDeleteId === habit.id ? (
                                   <span data-confirm-delete style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    {deleteError && (
+                                      <span style={{ fontSize: 11, color: 'var(--text-overdue)' }}>{deleteError}</span>
+                                    )}
                                     <button
                                       onClick={() => deleteHabit(habit.id)}
                                       style={{ fontSize: 12, color: 'var(--text-overdue)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
@@ -807,7 +829,7 @@ export default function HabitsPage() {
                                       Delete
                                     </button>
                                     <button
-                                      onClick={() => setConfirmDeleteId(null)}
+                                      onClick={() => { setConfirmDeleteId(null); setDeleteError(null); }}
                                       style={{ fontSize: 12, color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
                                     >
                                       Cancel
@@ -815,7 +837,7 @@ export default function HabitsPage() {
                                   </span>
                                 ) : (
                                   <button
-                                    onClick={() => setConfirmDeleteId(habit.id)}
+                                    onClick={() => { setConfirmDeleteId(habit.id); setDeleteError(null); }}
                                     style={{ color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16 }}
                                     onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-overdue)')}
                                     onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}

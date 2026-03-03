@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 2 March 2026 (Phase 21)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 30)
 
 ---
 
@@ -69,8 +69,9 @@ These are moments where Claude Code cannot proceed without real information from
 | 26 | Bug Fixes: Cursor Lag, Project Task Disappearing, Completed Tasks in Calendar | [x] Done |
 | 27 | Theme Customisation — 11 Themes | [x] Done |
 | 28 | Fix Cursor Lag in Task Input (Background-Highlight Approach) + Habit Delete | [x] Done |
-| 29 | Mobile-Friendly Layout + PWA | [ ] Pending |
-| 30 | Overlapping Calendar Events — Side-by-Side Column Layout | [ ] Pending |
+| 29 | Mobile-Friendly Layout + PWA | [x] Done |
+| 30 | Overlapping Calendar Events — Side-by-Side Column Layout | [x] Done |
+| 31 | Bug Fix: Habit Deletion (Foreign Key Cascade) | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -3684,4 +3685,105 @@ The task detail panel currently slides in from the right at 400px. On mobile thi
 
 ---
 
-*End of Build Plan — 30 Active Phases + 2 Future Stages*
+---
+
+## Phase 31 — Bug Fix: Habit Deletion (Foreign Key Cascade)
+
+**Status:** [x] Done
+
+**Completion Notes:**
+- Root cause confirmed: `deleteHabit()` was calling `supabase.from('habits').delete()` directly, which Supabase blocked with a FK violation because `habit_logs.habit_id` references `habits.id` with no `ON DELETE CASCADE`. The error was logged to console only — no user feedback.
+- Fix: two-step application-level cascade — delete `habit_logs` first, then delete the habit. Error state surfaced inline next to the confirm buttons.
+- Manual follow-up for Yosef: in Supabase dashboard → Table Editor → `habit_logs` → Foreign Keys → edit `habit_id → habits.id` → set "On delete" to **CASCADE**. This belt-and-braces DB change is optional since the app-level fix is sufficient.
+
+**What this does:** Fixes habit deletion silently doing nothing. The inline "Delete / Cancel" confirmation UI (added in Phase 28.1) works correctly, but the underlying Supabase delete call fails silently because `habit_logs` has a foreign key referencing `habits` with no `ON DELETE CASCADE`. Supabase blocks the delete and returns an error, which the current code only logs to console — the user sees nothing happen.
+
+**Root cause:** `habit_logs.habit_id` → `habits.id` foreign key constraint. Deleting a habit that has any logged entries fails at the database level.
+
+---
+
+### Steps for Claude Code
+
+#### 31.1 — Add cascade delete and surface errors to the user
+
+*Approach:* Only `src/app/habits/page.tsx` needs to change. The current `deleteHabit()` attempts to delete the habit directly, which fails silently when `habit_logs` rows exist. The fix is: (1) add a `deleteError` state (`string | null`) alongside the existing `confirmDeleteId` state; (2) rewrite `deleteHabit()` to first delete all `habit_logs` rows matching `habit_id`, then delete the habit, with error surfacing at both steps; (3) display `deleteError` inline next to the confirm buttons so the user sees it. The `setLogValues` cleanup and `setConfirmDeleteId(null)` calls are preserved from the existing implementation.
+
+**Two-part fix:**
+
+**Part 1 — Delete habit_logs first (application-level cascade)**
+
+In `src/app/habits/page.tsx`, update `deleteHabit()` to delete related `habit_logs` rows before deleting the habit itself:
+
+```ts
+const deleteHabit = async (id: string) => {
+  try {
+    // Step 1: delete all logs for this habit
+    const { error: logsError } = await supabase
+      .from('habit_logs')
+      .delete()
+      .eq('habit_id', id);
+    if (logsError) {
+      console.error('Failed to delete habit logs:', logsError);
+      setDeleteError('Could not delete habit logs. Please try again.');
+      return;
+    }
+    // Step 2: delete the habit itself
+    const { error } = await supabase
+      .from('habits')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('Failed to delete habit:', error);
+      setDeleteError('Could not delete habit. Please try again.');
+      return;
+    }
+    setHabits((prev) => prev.filter((h) => h.id !== id));
+    setLogValues((prev) => { const next = new Map(prev); next.delete(id); return next; });
+    setConfirmDeleteId(null);
+    setDeleteError(null);
+  } catch (err) {
+    console.error('Unexpected error deleting habit:', err);
+    setDeleteError('An unexpected error occurred.');
+  }
+};
+```
+
+**Part 2 — Show an error toast or inline message if deletion fails**
+
+Add a `deleteError` state (`string | null`) and display it inline near the confirm buttons so the user sees something went wrong rather than a silent no-op.
+
+**Part 3 (optional) — Add ON DELETE CASCADE in Supabase dashboard**
+
+As a belt-and-braces measure, also alter the foreign key in Supabase so future direct deletes work cleanly. In the Supabase dashboard → Table Editor → `habit_logs` → Foreign Keys → edit the `habit_id` → `habits.id` constraint → set "On delete" to **CASCADE**. This means the application-level cascade in Part 1 is also covered at the database level. Note: Claude Code cannot do this step — **you will need to do it manually in the Supabase dashboard**. Document the instruction here so it is not forgotten.
+
+**Completion Notes:**
+- Added `const [deleteError, setDeleteError] = useState<string | null>(null)` alongside `confirmDeleteId` in `src/app/habits/page.tsx`
+- Rewrote `deleteHabit()`: first deletes all `habit_logs` rows with matching `habit_id` (fixes the FK violation); if that fails, sets `deleteError` and returns early; then deletes the habit row; on success clears both `confirmDeleteId` and `deleteError`
+- Inline confirm UI: renders `deleteError` text (red, `font-size: 11`) to the left of the Delete/Cancel buttons when set; Cancel button now also calls `setDeleteError(null)` to clean up
+- `×` button that arms confirmation now also calls `setDeleteError(null)` to clear any stale error from a previous failed attempt
+- No database schema changes needed at the application level — the two-step delete handles the FK constraint entirely in code. Manual Supabase dashboard step (add `ON DELETE CASCADE`) is documented in the spec as belt-and-braces but not required.
+
+---
+
+#### 31.2 — Deploy
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Test: create a new habit, log it once, then delete it — confirm it disappears from the list.
+3. Test: create a new habit with no logs and delete it — confirm it also works.
+4. Commit: `git commit -m "Phase 31 — fix habit deletion: delete habit_logs first, surface errors"`
+5. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:**
+- `npm run build` passed with zero TypeScript or compilation errors — all 8 static pages generated cleanly
+
+---
+
+### Success Criteria
+- Deleting a habit with existing log entries removes both the logs and the habit cleanly.
+- Deleting a habit with no log entries also works.
+- If the delete fails for any reason, an error message appears inline — no more silent no-ops.
+- The two-state inline confirmation UI (Phase 28.1) continues to work as before.
+
+---
+
+*End of Build Plan — 31 Active Phases + 2 Future Stages*
