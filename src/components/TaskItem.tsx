@@ -9,6 +9,7 @@ type Props = {
   onDelete: (id: string) => void;
   onPriorityChange: (id: string, priority: 'p1' | 'p2' | 'p3') => void;
   onOpen?: (id: string) => void;
+  showProjectLabel?: boolean;
 };
 
 function formatDate(date: Date): { text: string; overdue: boolean } {
@@ -149,7 +150,7 @@ function ContextMenu({ task, onDelete, onPriorityChange, onClose, style }: Conte
   );
 }
 
-export default function TaskItem({ task, onComplete, onDelete, onPriorityChange, onOpen }: Props) {
+export default function TaskItem({ task, onComplete, onDelete, onPriorityChange, onOpen, showProjectLabel }: Props) {
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -262,6 +263,22 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
           >
             <span>📅</span>
             <span>{dateInfo.text}</span>
+          </div>
+        )}
+        {showProjectLabel && task.project && task.project.toLowerCase() !== 'inbox' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+            {task.projectColour && (
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: task.projectColour,
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{task.project}</span>
           </div>
         )}
       </div>

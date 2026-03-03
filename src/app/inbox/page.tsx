@@ -93,13 +93,6 @@ export default function InboxPage() {
 
   const loadData = useCallback(async () => {
     try {
-      // First fetch inbox project
-      const { data: inboxProjectData } = await supabase
-        .from('projects')
-        .select('*')
-        .ilike('name', 'inbox')
-        .maybeSingle();
-
       const { data: allProjectData } = await supabase.from('projects').select('*');
 
       if (allProjectData) {
@@ -113,24 +106,16 @@ export default function InboxPage() {
         );
       }
 
-      let query = supabase
+      // Fetch ALL incomplete tasks — no project filter
+      const { data: taskData, error: tErr } = await supabase
         .from('tasks')
         .select('*, projects(name, colour)')
         .eq('completed', false);
 
-      if (inboxProjectData) {
-        // Tasks where project_id is inbox OR project_id is null
-        query = query.or(`project_id.eq.${inboxProjectData.id},project_id.is.null`);
-      } else {
-        // No inbox project found — show tasks with no project
-        query = query.is('project_id', null);
-      }
-
-      const { data: taskData, error: tErr } = await query;
-      if (tErr) console.error('Failed to load inbox tasks:', tErr);
+      if (tErr) console.error('Failed to load all tasks:', tErr);
       if (taskData) setTasks((taskData as DbTask[]).map(dbToTask));
     } catch (err) {
-      console.error('Unexpected error loading inbox data:', err);
+      console.error('Unexpected error loading all tasks data:', err);
     } finally {
       setLoading(false);
     }
@@ -288,11 +273,11 @@ export default function InboxPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              Inbox
+              All Tasks
             </h1>
             {!loading && (
               <p style={{ marginTop: 4, fontSize: 13, color: 'var(--text-muted)' }}>
-                {activeTasks.length} task{activeTasks.length !== 1 ? 's' : ''}
+                Every task, across all projects.
               </p>
             )}
           </div>
@@ -332,7 +317,7 @@ export default function InboxPage() {
       ) : sortedTasks.length === 0 ? (
         <>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', padding: '8px 0' }}>
-            Your inbox is empty. Tasks without a project land here.
+            No tasks yet. Add one from any project view.
           </p>
           <AddTaskRow />
         </>
@@ -346,6 +331,7 @@ export default function InboxPage() {
               onDelete={deleteTask}
               onPriorityChange={updatePriority}
               onOpen={(id) => setSelectedTaskId(id)}
+              showProjectLabel
             />
           ))}
           <AddTaskRow />

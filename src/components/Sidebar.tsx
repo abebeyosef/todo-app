@@ -67,8 +67,7 @@ export default function Sidebar() {
       let todayAmt = 0;
       for (const t of taskRows ?? []) {
         if (t.project_id) counts[t.project_id] = (counts[t.project_id] ?? 0) + 1;
-        // Count as inbox: no project OR assigned to the Inbox project
-        if (!t.project_id || t.project_id === inboxProjectId) inbox++;
+        inbox++; // All Tasks count = every incomplete task
         if (t.scheduled_at && t.scheduled_at.startsWith(today)) todayAmt++;
       }
       setInboxCount(inbox);
@@ -297,7 +296,7 @@ export default function Sidebar() {
           {navBtn(
             'inbox',
             <Inbox size={16} />,
-            'Inbox',
+            'All Tasks',
             () => router.push('/inbox'),
             inboxCount || undefined
           )}
