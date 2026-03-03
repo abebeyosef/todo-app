@@ -514,7 +514,7 @@ export default function HabitsPage() {
       {/* Header */}
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)' }}>Habits</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--accent)' }}>Habits</h1>
           {!loading && total > 0 && (
             <p style={{ marginTop: 2, fontSize: 14, color: 'var(--text-muted)' }}>
               {completedCount} of {total} done today

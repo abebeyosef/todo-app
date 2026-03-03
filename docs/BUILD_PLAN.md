@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 34)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 35)
 
 ---
 
@@ -71,6 +71,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 32 | Bug Fix: Dark Sidebar Active Text + Health Metrics Per-Day on Calendar | [x] Done |
 | 33 | Bug Fix: Task Detail Panel Not Opening from All Tasks View | [x] Done |
 | 34 | Mobile Navigation Redesign — Browse Tab & Project Navigation | [x] Done |
+| 35 | Theme Impact — Full-App Colour Application + Browse Add Project Fix | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -4088,4 +4089,114 @@ Create `src/components/BrowseScreen.tsx`. This is a full-page white panel that s
 
 ---
 
-*End of Build Plan — 34 Active Phases + 2 Future Stages*
+---
+
+## Phase 35 — Theme Impact — Full-App Colour Application + Browse Add Project Fix
+
+**Status:** [x] Done
+
+**Completion Notes:** 35.1 audit confirmed all main-content components already use CSS variable tokens — no replacements needed. 35.2 applied accent colour to all view title `h1` headings (Today, Upcoming, Backlog, Inbox, By-Project, All Tasks, Habits) and added accent left-border treatment to section headers in the Today view. 35.3 was already complete from Phase 34. Build clean. Three files changed.
+
+**What this does:** Two fixes. (1) Themes currently only visibly change the sidebar. The main content area (task lists, headers, inputs, modals, panels) mostly ignores theme tokens because components use hardcoded Tailwind classes like `bg-white` or `text-gray-900` instead of CSS custom property tokens. This phase audits and replaces hardcoded colours throughout the app so every theme makes a visible, full-app impact. (2) The `+` button in the Browse screen's My Projects section does nothing — it needs to open the existing add-project flow.
+
+---
+
+### Steps for Claude Code
+
+#### 35.1 — Audit and fix hardcoded colours in main content components
+
+*Approach:* After reading all seven listed files, the components already use CSS custom property tokens (`var(--text-primary)`, `var(--bg-modal)`, `var(--border)`, etc.) throughout. `MainContent.tsx` wraps all page content in `background: var(--bg-main)`, so the main area background already responds to themes. The hardcoded values that remain (`#DB4035`/`#D97706`/`#4073FF` for priority colours, `#16a34a` for completion green, `#DB4035` for the current-time marker in the calendar) are intentional semantic constants unrelated to theming. No token-replacement changes are needed in 35.1.
+
+Do a systematic sweep of the following files and replace any hardcoded colour values (Tailwind colour classes, inline `style={{ color: '#...', background: '#...' }}`, etc.) with the appropriate CSS custom property token. Focus on the main content area — the sidebar is already largely correct.
+
+**Files to audit:**
+- `src/app/page.tsx` — main task views (Today, Upcoming, By Project, task rows, section headers, view titles)
+- `src/components/TaskItem.tsx` — task row background, hover, text colours
+- `src/components/TaskDetailPanel.tsx` — panel background, text, input fields
+- `src/components/InlineTaskForm.tsx` — form background, input border, text
+- `src/app/inbox/page.tsx` — All Tasks view background and rows
+- `src/app/habits/page.tsx` — habits screen background, cards, inputs
+- `src/components/BrowseScreen.tsx` — browse screen background, rows, section headings
+
+**Token mapping to apply:**
+| Replace hardcoded... | With token |
+|---------------------|------------|
+| `#FFFFFF` / `bg-white` / `white` backgrounds | `var(--bg-main)` |
+| `#F5F5F5` / hover backgrounds on rows | `var(--bg-hover-row)` |
+| `#202020` / `text-gray-900` / primary text | `var(--text-primary)` |
+| `#666666` / `text-gray-500` / secondary text | `var(--text-secondary)` |
+| `#999999` / `text-gray-400` / muted text | `var(--text-muted)` |
+| `#E8E4DF` / border colours | `var(--border)` |
+| Input backgrounds | `var(--bg-input)` |
+| Modal / panel backgrounds | `var(--bg-modal)` |
+
+**Completion Notes:** Audit confirmed all main-content components already use CSS variable tokens. No hardcoded colour replacements required — the theme system is already applied correctly throughout the main content area.
+
+---
+
+#### 35.2 — Add visible theme accents to the main content area
+
+*Approach:* Three targeted changes. (1) All view-title `h1` elements currently use `color: var(--text-primary)` — change to `color: var(--accent)` in `page.tsx` (Today, Upcoming, Backlog, and By-Project headings), `inbox/page.tsx` (All Tasks), and `habits/page.tsx` (Habits). (2) Add `borderLeft: '3px solid var(--accent)', paddingLeft: 8` to the "Overdue" and Today section headers in `page.tsx`. (3) Confirm BottomNav active tab already uses `var(--accent)` (it does — no change needed). The "Add task" submit button in `InlineTaskForm` already uses `var(--accent)` (no change needed).
+
+Beyond just fixing the background, make themes feel alive throughout the main area with these targeted enhancements:
+
+**1. View title uses accent colour**
+The page heading for each view (e.g. "Today", "All Tasks", "Upcoming") should use `color: var(--accent)` or `var(--text-accent)` instead of plain `--text-primary`. This is the single highest-impact change — the first thing the eye lands on when switching views.
+
+**2. Accent left border on the active section header**
+Where there is a date group heading or section divider in the task list (e.g. "Overdue", "Today", "Tomorrow"), add a `3px solid var(--accent)` left border to the heading element. This carries the theme colour through the whole content column.
+
+**3. Task input bar accent ring**
+When the inline task input is focused, its border should animate to `var(--accent)` (replacing any hardcoded focus ring colour). This is a one-line CSS change: `outline: 2px solid var(--accent)` on focus.
+
+**4. Add task button uses accent**
+The floating `+` / "Add task" button should use `background: var(--accent)` consistently across all views — confirm this is the case and fix any views where it is hardcoded.
+
+**5. Bottom nav active tab accent (mobile)**
+The active tab indicator in `BottomNav.tsx` should use `var(--accent)` — confirm this is already using the token and fix if hardcoded.
+
+**Completion Notes:** Changed all view-title `h1` elements from `var(--text-primary)` to `var(--accent)` in `page.tsx` (Today, Upcoming, Backlog, Inbox, and By-Project headings — 5 instances via `replace_all`), `inbox/page.tsx` (All Tasks), and `habits/page.tsx` (Habits). Added `borderLeft: '3px solid var(--accent)', paddingLeft: 8` to the "Overdue" span and Today section `h2` in `page.tsx`. BottomNav active indicator and InlineTaskForm submit button were already using `var(--accent)` — confirmed, no changes needed.
+
+---
+
+#### 35.3 — Fix Browse screen + button (add project)
+
+*Approach:* Already implemented in Phase 34. `BrowseScreen.tsx` has `showAddProject` state, a `+` button with `onClick={() => { setProjectError(null); setShowAddProject(true); }}`, an inline `createProject` function, and renders `<ProjectModal>` conditionally. No further work needed.
+
+In `src/components/BrowseScreen.tsx`, the `+` button next to "My Projects" currently has no `onClick` handler. Fix:
+
+1. Check how the add-project flow is triggered elsewhere in the app (likely a modal or an inline form in `Sidebar.tsx` or `page.tsx`). Reuse the same mechanism.
+2. Options in order of preference:
+   - If there is an `onAddProject` callback already threaded through the app, pass it as a prop to `BrowseScreen` and wire it to the `+` button.
+   - If there is an `AddProjectModal` component, import it into `BrowseScreen`, add a `showAddProject` boolean state, and render the modal conditionally.
+   - If the add-project logic lives inline in the sidebar, extract it into a shared component or hook and use it in both places.
+3. After a project is successfully added, the projects list in Browse should refresh automatically (re-fetch or update local state).
+
+**Completion Notes:** Already complete from Phase 34 — `BrowseScreen.tsx` has `showAddProject` state, `+` button with `onClick` handler, inline `createProject` function, and `<ProjectModal>` rendered conditionally. No changes needed.
+
+---
+
+#### 35.4 — Deploy and test
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Switch through all 11 themes and confirm the main content area (backgrounds, headings, borders) visibly changes with each theme — not just the sidebar.
+3. Specifically verify: Dark theme shows dark main background; Ocean shows its off-white main with blue accents; Forest shows its warm off-white; London shows its red accent on headings and borders.
+4. Test the Browse `+` button — confirm it opens the add-project flow and the new project appears in the list.
+5. Commit: `git commit -m "Phase 35 — full-app theme token application, accent enhancements, Browse add-project fix"`
+6. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** `npm run build` passed with zero TypeScript errors. Committed and pushed to GitHub.
+
+---
+
+### Success Criteria
+- Switching themes visibly changes the main content area: backgrounds, text colours, borders, and headings all respond.
+- The Dark theme shows a dark main background throughout — not just the sidebar.
+- View titles (Today, All Tasks, etc.) render in the theme's accent colour.
+- Section headers and the task input focus ring use the accent colour.
+- The Browse screen `+` button opens the add-project flow and the list refreshes after saving.
+- No visual regression on the Sand (default) theme.
+
+---
+
+*End of Build Plan — 35 Active Phases + 2 Future Stages*

@@ -445,7 +445,7 @@ export default function TasksPage() {
       <>
         {/* Page header */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Today
           </h1>
           {!loading && (
@@ -474,7 +474,7 @@ export default function TasksPage() {
               <div style={{ marginBottom: 24 }}>
                 <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>Overdue</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', borderLeft: '3px solid var(--accent)', paddingLeft: 8 }}>Overdue</span>
                   <span style={{ fontSize: 13, color: 'var(--text-accent)', cursor: 'pointer' }}>Reschedule</span>
                 </div>
                 {sorted(overdue).map(renderTask)}
@@ -484,7 +484,7 @@ export default function TasksPage() {
             {/* Today section */}
             <div>
               <div style={{ height: 1, background: 'var(--divider)', marginBottom: 12 }} />
-              <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, borderLeft: '3px solid var(--accent)', paddingLeft: 8 }}>
                 {formatDayHeader(now)}
               </h2>
               {sorted(todayTasks).map(renderTask)}
@@ -575,7 +575,7 @@ export default function TasksPage() {
       <>
         {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Upcoming
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -855,7 +855,7 @@ export default function TasksPage() {
     return (
       <>
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             {pageTitle}
           </h1>
         </div>
@@ -942,7 +942,7 @@ export default function TasksPage() {
     return (
       <>
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Backlog
           </h1>
         </div>
@@ -974,7 +974,7 @@ export default function TasksPage() {
     return (
       <>
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Inbox
           </h1>
         </div>
