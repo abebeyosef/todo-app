@@ -7,6 +7,7 @@ import { Project } from '@/types/project';
 import TaskItem from '@/components/TaskItem';
 import InlineTaskForm from '@/components/InlineTaskForm';
 import CompletedSection from '@/components/CompletedSection';
+import TaskDetailPanel from '@/components/TaskDetailPanel';
 import { useToast } from '@/lib/toast';
 
 // ── DB → app type ───────────────────────────────────────────────────────────
@@ -224,6 +225,10 @@ export default function InboxPage() {
     }
   };
 
+  const updateTask = (updated: Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  };
+
   const activeTasks = tasks.filter((t) => !t.completed);
   const completedTasksAll = [...tasks.filter((t) => t.completed)].sort(
     (a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0)
@@ -268,6 +273,8 @@ export default function InboxPage() {
       </button>
     );
   };
+
+  const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
 
   return (
     <>
@@ -349,6 +356,12 @@ export default function InboxPage() {
           />
         </>
       )}
+      <TaskDetailPanel
+        task={selectedTask}
+        onClose={() => setSelectedTaskId(null)}
+        onTaskUpdate={updateTask}
+        onTaskDelete={deleteTask}
+      />
     </>
   );
 }

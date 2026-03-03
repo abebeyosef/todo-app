@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 32)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 33)
 
 ---
 
@@ -69,6 +69,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 30 | Overlapping Calendar Events — Side-by-Side Column Layout | [x] Done |
 | 31 | Bug Fix: Habit Deletion (Foreign Key Cascade) | [x] Done |
 | 32 | Bug Fix: Dark Sidebar Active Text + Health Metrics Per-Day on Calendar | [x] Done |
+| 33 | Bug Fix: Task Detail Panel Not Opening from All Tasks View | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -3691,7 +3692,7 @@ The task detail panel currently slides in from the right at 400px. On mobile thi
 **Completion Notes:**
 - Root cause confirmed: `deleteHabit()` was calling `supabase.from('habits').delete()` directly, which Supabase blocked with a FK violation because `habit_logs.habit_id` references `habits.id` with no `ON DELETE CASCADE`. The error was logged to console only — no user feedback.
 - Fix: two-step application-level cascade — delete `habit_logs` first, then delete the habit. Error state surfaced inline next to the confirm buttons.
-- Manual follow-up for Yosef: in Supabase dashboard → Table Editor → `habit_logs` → Foreign Keys → edit `habit_id → habits.id` → set "On delete" to **CASCADE**. This belt-and-braces DB change is optional since the app-level fix is sufficient.
+- Manual follow-up for Yosef: in Supabase dashboard → Table Editor → `habit_logs` → Foreign Keys → edit `habit_id → habits.id` → set "On delete" to **CASCADE**. ✅ Done by Yosef — 3 March 2026.
 
 **What this does:** Fixes habit deletion silently doing nothing. The inline "Delete / Cancel" confirmation UI (added in Phase 28.1) works correctly, but the underlying Supabase delete call fails silently because `habit_logs` has a foreign key referencing `habits` with no `ON DELETE CASCADE`. Supabase blocks the delete and returns an error, which the current code only logs to console — the user sees nothing happen.
 
@@ -3888,4 +3889,68 @@ The Habits page has two tabs: the daily checklist and the monthly calendar. Curr
 
 ---
 
-*End of Build Plan — 32 Active Phases + 2 Future Stages*
+---
+
+## Phase 33 — Bug Fix: Task Detail Panel Not Opening from All Tasks View
+
+**Status:** [x] Done
+
+**Completion Notes:** Added `TaskDetailPanel` import and render to `src/app/inbox/page.tsx`. The `selectedTaskId` state and `onOpen` wiring were already in place — only the panel render and an `updateTask` handler were missing. One file changed; build clean.
+
+**What this does:** Fixes clicking a task in the All Tasks view doing nothing. In every other view (Today, Upcoming, By Project), clicking a task opens the `TaskDetailPanel` on the right showing the task's description, notes, comments, due date, and other details. In the All Tasks view (`src/app/inbox/page.tsx`) the same click does nothing because the `onOpen` handler or `selectedTaskId` state is not wired up to `TaskDetailPanel`.
+
+**Root cause:** The All Tasks view was built in Phase 22 as a read-only master list. It renders `TaskItem` components but does not manage a `selectedTaskId` state or render a `TaskDetailPanel` alongside the list, so the click handler has nowhere to go.
+
+---
+
+### Steps for Claude Code
+
+#### 33.1 — Wire up TaskDetailPanel in the All Tasks view
+
+*Approach:* Inspecting `src/app/inbox/page.tsx` reveals that `selectedTaskId` state and `onOpen` are already wired to `TaskItem` and `CompletedSection` — the state is being set but the panel is never rendered. Three things are missing: (1) the `TaskDetailPanel` import; (2) a `handleTaskUpdate` function that updates the `tasks` array in place (the panel handles its own Supabase saves and just calls back to sync local state); (3) the `<TaskDetailPanel>` element at the end of the JSX, passing `task={tasks.find(t => t.id === selectedTaskId) ?? null}`, `onClose`, `onTaskUpdate`, and `onTaskDelete`. The existing `deleteTask` function is passed directly as `onTaskDelete`.
+
+1. In `src/app/inbox/page.tsx`, add a `selectedTaskId` state:
+   ```ts
+   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+   ```
+2. Pass `onOpen={setSelectedTaskId}` to each `TaskItem` rendered in the list — this is the same prop used in other views to open the detail panel.
+3. Import and render `TaskDetailPanel` at the bottom of the page, conditionally when `selectedTaskId` is set:
+   ```tsx
+   {selectedTaskId && (
+     <TaskDetailPanel
+       taskId={selectedTaskId}
+       onClose={() => setSelectedTaskId(null)}
+       // pass any other props TaskDetailPanel requires (tasks, onUpdate, etc.)
+     />
+   )}
+   ```
+4. Check what props `TaskDetailPanel` requires by reading its component signature — pass them all. It will likely need the full tasks array and an update handler so edits made in the panel save correctly.
+5. Ensure closing the panel (clicking ✕ or outside) calls `setSelectedTaskId(null)` cleanly.
+
+**Completion Notes:** `src/app/inbox/page.tsx` — added `TaskDetailPanel` import, added `updateTask` handler (updates `tasks` array in place), derived `selectedTask` from `tasks.find(t => t.id === selectedTaskId)`, and rendered `<TaskDetailPanel>` at the bottom of the JSX with `task`, `onClose`, `onTaskUpdate`, and `onTaskDelete`. The `selectedTaskId` state and `onOpen` wiring were already present. Build passed with zero TypeScript errors. Success criteria met.
+
+---
+
+#### 33.2 — Deploy
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Test: click any task in the All Tasks view — confirm the detail panel slides in showing description, notes, due date, and priority.
+3. Test: edit a task's name or due date from the panel — confirm the change saves and reflects in the list.
+4. Test: close the panel — confirm it closes cleanly with no errors.
+5. Commit: `git commit -m "Phase 33 — fix task detail panel not opening from All Tasks view"`
+6. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** `npm run build` passed with zero TypeScript errors. Committed and pushed to GitHub.
+
+---
+
+### Success Criteria
+- Clicking any task in the All Tasks view opens the TaskDetailPanel.
+- The panel shows the task's full details (description, notes, due date, priority, project).
+- Edits made in the panel save correctly and update the list.
+- Closing the panel works cleanly.
+- No regression in other views — Today, Upcoming, and By Project panels still work as before.
+
+---
+
+*End of Build Plan — 33 Active Phases + 2 Future Stages*
