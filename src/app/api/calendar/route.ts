@@ -7,6 +7,25 @@ function getCalendar(accessToken: string) {
   return google.calendar({ version: 'v3', auth });
 }
 
+function isAllDay(scheduledAt: Date): boolean {
+  return scheduledAt.getHours() === 0 && scheduledAt.getMinutes() === 0;
+}
+
+function buildEventTimes(scheduledAt: Date, durationMinutes?: number) {
+  if (isAllDay(scheduledAt)) {
+    const dateStr = scheduledAt.toISOString().split('T')[0];
+    return {
+      start: { date: dateStr },
+      end: { date: dateStr },
+    };
+  }
+  const end = new Date(scheduledAt.getTime() + (durationMinutes ?? 60) * 60 * 1000);
+  return {
+    start: { dateTime: scheduledAt.toISOString() },
+    end: { dateTime: end.toISOString() },
+  };
+}
+
 export async function POST(req: NextRequest) {
   const { action, accessToken, task, googleEventId } = await req.json();
 
@@ -20,14 +39,13 @@ export async function POST(req: NextRequest) {
     if (action === 'create') {
       if (!task.scheduledAt) return NextResponse.json({ id: null });
       const start = new Date(task.scheduledAt);
-      const end = new Date(start.getTime() + (task.duration ?? 60) * 60 * 1000);
+      const times = buildEventTimes(start, task.duration);
       const res = await calendar.events.insert({
         calendarId: 'primary',
         requestBody: {
           summary: task.name,
           description: task.project ? `#${task.project}` : undefined,
-          start: { dateTime: start.toISOString() },
-          end: { dateTime: end.toISOString() },
+          ...times,
         },
       });
       return NextResponse.json({ id: res.data.id ?? null });
@@ -36,14 +54,13 @@ export async function POST(req: NextRequest) {
     if (action === 'update') {
       if (!googleEventId || !task.scheduledAt) return NextResponse.json({ ok: true });
       const start = new Date(task.scheduledAt);
-      const end = new Date(start.getTime() + (task.duration ?? 60) * 60 * 1000);
+      const times = buildEventTimes(start, task.duration);
       await calendar.events.patch({
         calendarId: 'primary',
         eventId: googleEventId,
         requestBody: {
           summary: task.completed ? `✓ ${task.name}` : task.name,
-          start: { dateTime: start.toISOString() },
-          end: { dateTime: end.toISOString() },
+          ...times,
         },
       });
       return NextResponse.json({ ok: true });
@@ -57,8 +74,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (e) {
-    // Silently swallow calendar errors — task ops still succeed
     console.error('Calendar error:', e);
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ error: 'calendar_failed' }, { status: 500 });
   }
 }

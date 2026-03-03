@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CalendarX2 } from 'lucide-react';
 import { Task } from '@/types/task';
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   onPriorityChange: (id: string, priority: 'p1' | 'p2' | 'p3') => void;
   onOpen?: (id: string) => void;
   showProjectLabel?: boolean;
+  onCalendarSync?: (id: string) => Promise<void>;
 };
 
 function formatDate(date: Date): { text: string; overdue: boolean } {
@@ -150,10 +152,11 @@ function ContextMenu({ task, onDelete, onPriorityChange, onClose, style }: Conte
   );
 }
 
-export default function TaskItem({ task, onComplete, onDelete, onPriorityChange, onOpen, showProjectLabel }: Props) {
+export default function TaskItem({ task, onComplete, onDelete, onPriorityChange, onOpen, showProjectLabel, onCalendarSync }: Props) {
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const dateInfo = task.scheduledAt ? formatDate(task.scheduledAt) : null;
 
@@ -294,6 +297,36 @@ export default function TaskItem({ task, onComplete, onDelete, onPriorityChange,
           marginTop: 2,
         }}
       >
+        {/* Unsynced calendar indicator — task has a date but no google_event_id */}
+        {task.scheduledAt && !task.googleEventId && onCalendarSync && (hovered || syncing) && (
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              setSyncing(true);
+              await onCalendarSync(task.id);
+              setSyncing(false);
+            }}
+            title="Sync to Google Calendar"
+            disabled={syncing}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: syncing ? 'default' : 'pointer',
+              padding: 2,
+              color: 'var(--text-muted)',
+              lineHeight: 1,
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              opacity: syncing ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+          >
+            <CalendarX2 size={14} />
+          </button>
+        )}
+
         {/* Priority flag */}
         {(task.priority === 'p1' || hovered) && (
           <button

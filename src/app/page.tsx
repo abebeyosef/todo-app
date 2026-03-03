@@ -12,18 +12,25 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/lib/toast';
 
 // ── Calendar API helpers ────────────────────────────────────────────────────
-async function calendarCreate(task: Task, accessToken: string): Promise<string | null> {
+// Returns the event ID string on success, null if no date (nothing to sync),
+// or false if the API call failed.
+async function calendarCreate(task: Task, accessToken: string): Promise<string | null | false> {
   try {
     const res = await fetch('/api/calendar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'create', accessToken, task }),
     });
+    if (!res.ok) return false;
     return (await res.json()).id ?? null;
   } catch (err) {
     console.error('Failed to create calendar event:', err);
-    return null;
+    return false;
   }
+}
+
+function isTokenExpired(expiresAt?: number): boolean {
+  return !expiresAt || Date.now() / 1000 > expiresAt - 60;
 }
 async function calendarUpdate(task: Task, googleEventId: string, accessToken: string) {
   try {
@@ -114,6 +121,14 @@ export default function TasksPage() {
   const accessToken = session?.accessToken;
   const { showToast } = useToast();
 
+  // Warn on page load if Google token is already expired
+  useEffect(() => {
+    if (accessToken && isTokenExpired(session?.expiresAt)) {
+      showToast('Google Calendar disconnected — sign out and back in to re-enable sync.');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const selectedProjectId = searchParams.get('project');
@@ -175,8 +190,18 @@ export default function TasksPage() {
         ? projects.find((p) => p.name.toLowerCase() === task.project!.toLowerCase())
         : null;
       let googleEventId: string | null = null;
+      let calendarSyncFailed = false;
       if (accessToken && task.scheduledAt) {
-        googleEventId = await calendarCreate(task, accessToken);
+        if (isTokenExpired(session?.expiresAt)) {
+          showToast('Google Calendar disconnected — sign out and back in to re-enable sync.');
+        } else {
+          const result = await calendarCreate(task, accessToken);
+          if (result === false) {
+            calendarSyncFailed = true;
+          } else {
+            googleEventId = result;
+          }
+        }
       }
       const inboxProject = projects.find((p) => p.name.toLowerCase() === 'inbox');
       const effectiveProjectId = task.projectId ?? matchedProject?.id ?? inboxProject?.id ?? null;
@@ -207,8 +232,12 @@ export default function TasksPage() {
         const newTask = dbToTask(data as DbTask);
         setTasks((prev) => [newTask, ...prev]);
         window.dispatchEvent(new Event('tasks-changed'));
-        const projectName = newTask.project ? ` to ${newTask.project}` : '';
-        showToast(`Task added${projectName}`);
+        if (calendarSyncFailed) {
+          showToast('Task saved, but calendar sync failed — tap the calendar icon on the task to retry.');
+        } else {
+          const projectName = newTask.project ? ` to ${newTask.project}` : '';
+          showToast(`Task added${projectName}`);
+        }
         setFormOpen(false);
       }
     } catch (err) {
@@ -272,6 +301,31 @@ export default function TasksPage() {
     }
   };
 
+  const calendarSync = async (id: string) => {
+    if (!accessToken) return;
+    if (isTokenExpired(session?.expiresAt)) {
+      showToast('Google Calendar disconnected — sign out and back in to re-enable sync.');
+      return;
+    }
+    const task = tasks.find((t) => t.id === id);
+    if (!task || !task.scheduledAt) return;
+    const result = await calendarCreate(task, accessToken);
+    if (result === false) {
+      showToast('Calendar sync failed — please try again.');
+      return;
+    }
+    if (result) {
+      try {
+        const { error } = await supabase.from('tasks').update({ google_event_id: result }).eq('id', id);
+        if (error) { console.error('Failed to save google_event_id:', error); return; }
+        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, googleEventId: result } : t)));
+        showToast('Task synced to Google Calendar.');
+      } catch (err) {
+        console.error('Unexpected error saving google_event_id:', err);
+      }
+    }
+  };
+
   const updateTask = async (updated: Task) => {
     try {
       const { error } = await supabase.from('tasks').update({
@@ -313,6 +367,7 @@ export default function TasksPage() {
       onDelete={deleteTask}
       onPriorityChange={updatePriority}
       onOpen={(id) => setSelectedTaskId(id)}
+      onCalendarSync={accessToken ? calendarSync : undefined}
     />
   );
 
