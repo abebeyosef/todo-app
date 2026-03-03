@@ -67,6 +67,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 24 | Duration in Upcoming View & Free-order NL Parsing | [x] Done |
 | 25 | Completed Tasks Visible In-Place | [x] Done |
 | 26 | Bug Fixes: Cursor Lag, Project Task Disappearing, Completed Tasks in Calendar | [x] Done |
+| 27 | Theme Customisation — 11 Themes | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -2837,4 +2838,311 @@ The app already has Google OAuth — adding a second user is as simple as adding
 
 ---
 
-*End of Build Plan — 26 Active Phases + 2 Future Stages*
+---
+
+## Phase 27 — Theme Customisation (11 Themes)
+**What this does:** Adds a theme picker to the app sidebar footer. Choosing a theme instantly repaints the entire app — sidebar, backgrounds, accents, borders, icons, toasts, priority colours — by swapping CSS custom property values on the root element. The selected theme persists across sessions via `localStorage`. Eleven themes are included, organised into three categories: **General** (Sand, Dark, Slate), **Nature** (Forest, Ocean), and **Places** (London, Warsaw, Wakefield, Addis, LA, Łeba).
+
+**Status:** [x] Done — 3 March 2026
+
+**Completion Notes:** All 11 themes implemented. CSS custom property blocks added for each theme in `globals.css`. Four dark-sidebar themes (Dark, Ocean, London, Addis) override `--sidebar-text` / `--sidebar-text-muted` with light values. `ThemePicker.tsx` provides category pills (General/Nature/Places) and 22px accent swatches with check mark, hover tooltip, and scale animation. Picker added to Sidebar footer. Flash prevention inline script added to `layout.tsx`. `npm run build` clean; committed and pushed.
+
+---
+
+### Theme Definitions
+
+All themes redefine the same set of CSS custom properties already established in `globals.css`. Only the values change — no component code needs updating.
+
+#### Theme 1 — Sand *(default, current)*
+Warm, Todoist-inspired. Cream sidebar, amber accent.
+```css
+--bg-sidebar: #FAF8F5;  --bg-main: #FFFFFF;    --accent: #D97706;
+--accent-dark: #B45309; --accent-bg: #FFEED9;  --bg-active: #FFEED9;
+--bg-hover-sidebar: #F0EDE8; --bg-hover-row: #F5F5F5;
+--text-primary: #202020; --text-secondary: #666666; --text-muted: #999999;
+--text-accent: #B45309; --border: #E8E4DF; --border-input: #D1CBC3;
+--divider: #F0F0F0; --icon: #555555; --icon-active: #D97706;
+--bg-tag: #FFEED9; --checkbox-border: #CCCCCC;
+--date-overdue-bg: #FDECEA; --date-future-bg: #FFF3E0;
+```
+
+#### Theme 2 — Dark
+Sleek dark mode. Deep grey backgrounds, soft gold accent.
+```css
+--bg-sidebar: #1C1C1E;  --bg-main: #242424;    --accent: #F5A623;
+--accent-dark: #D4860B; --accent-bg: #3A2E1A;  --bg-active: #2E2720;
+--bg-hover-sidebar: #2A2A2C; --bg-hover-row: #2C2C2E;
+--bg-modal: #2C2C2E;    --bg-input: #333335;   --bg-toast: #3A3A3C;
+--text-primary: #F2F2F7; --text-secondary: #AEAEB2; --text-muted: #636366;
+--text-accent: #F5A623; --text-toast: #F2F2F7;
+--border: #3A3A3C; --border-input: #48484A;
+--divider: #2C2C2E; --icon: #AEAEB2; --icon-active: #F5A623;
+--bg-tag: #3A2E1A; --checkbox-border: #48484A;
+--date-overdue-bg: #3A1F1F; --date-future-bg: #2E2A1A;
+```
+
+#### Theme 3 — Ocean
+Clean, professional. White main, navy sidebar, cobalt accent.
+```css
+--bg-sidebar: #1E2A3A;  --bg-main: #FFFFFF;    --accent: #3B82F6;
+--accent-dark: #2563EB; --accent-bg: #EFF6FF;  --bg-active: #DBEAFE;
+--bg-hover-sidebar: #263447; --bg-hover-row: #F0F7FF;
+--text-primary: #0F172A; --text-secondary: #475569; --text-muted: #94A3B8;
+--text-accent: #2563EB; --border: #E2E8F0; --border-input: #CBD5E1;
+--divider: #F1F5F9; --icon: #64748B; --icon-active: #3B82F6;
+--bg-tag: #DBEAFE; --checkbox-border: #CBD5E1;
+--date-overdue-bg: #FEE2E2; --date-future-bg: #EFF6FF;
+/* Sidebar text needs to be light since sidebar is dark navy */
+--sidebar-text: #E2E8F0; --sidebar-text-muted: #94A3B8;
+```
+
+#### Theme 4 — Forest
+Calm, earthy. Sage sidebar, emerald accent, warm off-white main.
+```css
+--bg-sidebar: #EFF3EF;  --bg-main: #FAFAF8;    --accent: #2D6A4F;
+--accent-dark: #1B4332; --accent-bg: #D8F3DC;  --bg-active: #D8F3DC;
+--bg-hover-sidebar: #E0EBE0; --bg-hover-row: #F0F5F0;
+--text-primary: #1A2E1A; --text-secondary: #4A6741; --text-muted: #7A9E7A;
+--text-accent: #1B4332; --border: #C8DCC8; --border-input: #A8C4A8;
+--divider: #E4EEE4; --icon: #4A6741; --icon-active: #2D6A4F;
+--bg-tag: #D8F3DC; --checkbox-border: #A8C4A8;
+--date-overdue-bg: #FFE4E1; --date-future-bg: #D8F3DC;
+```
+
+#### Theme 5 — Slate
+Minimal, cool. Light grey sidebar, white main, indigo accent.
+```css
+--bg-sidebar: #F4F5F6;  --bg-main: #FFFFFF;    --accent: #4F46E5;
+--accent-dark: #3730A3; --accent-bg: #EEF2FF;  --bg-active: #E0E7FF;
+--bg-hover-sidebar: #EAEBEC; --bg-hover-row: #F8F8F9;
+--text-primary: #111827; --text-secondary: #4B5563; --text-muted: #9CA3AF;
+--text-accent: #3730A3; --border: #E5E7EB; --border-input: #D1D5DB;
+--divider: #F3F4F6; --icon: #6B7280; --icon-active: #4F46E5;
+--bg-tag: #EEF2FF; --checkbox-border: #D1D5DB;
+--date-overdue-bg: #FEE2E2; --date-future-bg: #EEF2FF;
+```
+
+#### Theme 6 — London
+Charcoal + Bus Red. Fog, concrete, and the iconic crimson of the double-decker.
+```css
+--bg-sidebar: #2D2D2D;  --bg-main: #FAFAFA;    --accent: #CC0000;
+--accent-dark: #A30000; --accent-bg: #FDECEA;  --bg-active: #FDECEA;
+--bg-hover-sidebar: #383838; --bg-hover-row: #F5F5F5;
+--bg-modal: #FFFFFF;    --bg-input: #FFFFFF;
+--text-primary: #1A1A1A; --text-secondary: #555555; --text-muted: #888888;
+--text-accent: #A30000; --border: #DCDCDC; --border-input: #CCCCCC;
+--divider: #EEEEEE; --icon: #666666; --icon-active: #CC0000;
+--bg-tag: #FDECEA; --checkbox-border: #CCCCCC;
+--date-overdue-bg: #FDECEA; --date-future-bg: #FFF3F3;
+/* Sidebar text light since sidebar is dark */
+--sidebar-text: #E8E8E8; --sidebar-text-muted: #AAAAAA;
+```
+
+#### Theme 7 — Warsaw
+Cool White + Polish Crimson. Reconstructed Baroque meets modernist precision.
+```css
+--bg-sidebar: #EEF0F3;  --bg-main: #FFFFFF;    --accent: #C41E3A;
+--accent-dark: #9B1830; --accent-bg: #FDE8EC;  --bg-active: #FDE8EC;
+--bg-hover-sidebar: #E2E5EA; --bg-hover-row: #F8F9FA;
+--text-primary: #1A1A2E; --text-secondary: #4A4A6A; --text-muted: #8A8AAA;
+--text-accent: #9B1830; --border: #DDE1E8; --border-input: #C8CDD8;
+--divider: #ECEEF2; --icon: #5A5A7A; --icon-active: #C41E3A;
+--bg-tag: #FDE8EC; --checkbox-border: #C8CDD8;
+--date-overdue-bg: #FDECEA; --date-future-bg: #F0F2FF;
+```
+
+#### Theme 8 — Wakefield
+Yorkshire Stone + Rhubarb Pink. Sandstone heritage meets the Rhubarb Triangle.
+```css
+--bg-sidebar: #F2EBE0;  --bg-main: #FFFDF9;    --accent: #C2185B;
+--accent-dark: #880E4F; --accent-bg: #FCE4EC;  --bg-active: #FCE4EC;
+--bg-hover-sidebar: #EAE0D4; --bg-hover-row: #FDF8F3;
+--text-primary: #2C1810; --text-secondary: #6B4C3B; --text-muted: #A08070;
+--text-accent: #880E4F; --border: #E0D4C4; --border-input: #CEC0AD;
+--divider: #EDE5D8; --icon: #7A5C4A; --icon-active: #C2185B;
+--bg-tag: #FCE4EC; --checkbox-border: #CEC0AD;
+--date-overdue-bg: #FDECEA; --date-future-bg: #FFF0F5;
+```
+
+#### Theme 9 — Addis *(Places)*
+Deep Eucalyptus + Coffee Gold. Addis Ababa's forests, coffee ceremonies, and high-altitude light.
+```css
+--bg-sidebar: #1B3A2D;  --bg-main: #FEFCF7;    --accent: #D4860B;
+--accent-dark: #A0620A; --accent-bg: #FDF3E3;  --bg-active: #FDF3E3;
+--bg-hover-sidebar: #24503D; --bg-hover-row: #FAF6EE;
+--bg-modal: #FFFFFF;    --bg-input: #FFFFFF;
+--text-primary: #1A0F00; --text-secondary: #5C4020; --text-muted: #9A7A50;
+--text-accent: #A0620A; --border: #E8DCC8; --border-input: #D4C4A4;
+--divider: #F0E8D4; --icon: #7A6040; --icon-active: #D4860B;
+--bg-tag: #FDF3E3; --checkbox-border: #D4C4A4;
+--date-overdue-bg: #FDE8E8; --date-future-bg: #FDF3E3;
+/* Sidebar text light since sidebar is dark green */
+--sidebar-text: #D4EBD8; --sidebar-text-muted: #8AB898;
+```
+
+#### Theme 10 — Łeba *(Places)*
+Baltic Coast + Pine Teal. Łeba is a small resort town on Poland's Baltic coast — cold grey-green sea, white sand dunes, pine forests stretching to the horizon. Cool grey-blue sidebar like the Baltic sky, crisp white main, deep teal accent from the pine forests and sea glass. Calm and unhurried, like a long walk on an empty beach in September.
+```css
+--bg-sidebar: #E8EEF2;  --bg-main: #FFFFFF;    --accent: #1B6B5A;
+--accent-dark: #134E40; --accent-bg: #E0F2EE;  --bg-active: #D0ECE6;
+--bg-hover-sidebar: #DCE4EA; --bg-hover-row: #F2F7F9;
+--text-primary: #0F1F2A; --text-secondary: #3A5568; --text-muted: #7A9AAA;
+--text-accent: #134E40; --border: #D4DDE4; --border-input: #BACAD4;
+--divider: #EAF0F4; --icon: #4A6A7A; --icon-active: #1B6B5A;
+--bg-tag: #E0F2EE; --checkbox-border: #BACAD4;
+--date-overdue-bg: #FEE2E2; --date-future-bg: #E0F2EE;
+```
+
+#### Theme 11 — LA *(Places)*
+Pacific Sun + Burnt Terracotta. Los Angeles bleached warm and dry — wide boulevards, terracotta rooftops, canyon walls in late afternoon amber, the Getty on the hill. Warmer than Sand but drier and more Californian: sandy off-white sidebar, bright warm white main, burnt terracotta accent.
+```css
+--bg-sidebar: #FAF6F0;  --bg-main: #FFFFFF;    --accent: #D2622A;
+--accent-dark: #A8471A; --accent-bg: #FDF0E8;  --bg-active: #FDE8D8;
+--bg-hover-sidebar: #F2EBE0; --bg-hover-row: #FDF9F5;
+--text-primary: #1E120A; --text-secondary: #6B4832; --text-muted: #A88060;
+--text-accent: #A8471A; --border: #EAD8C4; --border-input: #D8C0A4;
+--divider: #F2E8DC; --icon: #8A6040; --icon-active: #D2622A;
+--bg-tag: #FDF0E8; --checkbox-border: #D8C0A4;
+--date-overdue-bg: #FDECEA; --date-future-bg: #FDF0E8;
+```
+
+---
+
+### Theme Categories
+
+Themes are organised into three groups in the picker:
+
+| Category | Themes |
+|----------|--------|
+| **General** | Sand, Dark, Slate |
+| **Nature** | Forest, Ocean |
+| **Places** | London, Warsaw, Wakefield, Addis, Łeba, LA |
+
+---
+
+### Steps for Claude Code
+
+#### 27.1 — Add `--sidebar-text` tokens and apply them throughout Sidebar
+
+Four themes (Ocean, London, Addis, Dark) have dark sidebar backgrounds, which means white/light text is needed in the sidebar. The other themes use dark text on light sidebars. A new pair of tokens handles this cleanly without duplicating components.
+
+1. In `globals.css`, add to the `:root` block:
+   ```css
+   --sidebar-text:       var(--text-primary);
+   --sidebar-text-muted: var(--text-muted);
+   ```
+   This makes them default to the existing text tokens for all light-sidebar themes.
+
+2. In `src/components/Sidebar.tsx`, replace any hardcoded sidebar text colours with `var(--sidebar-text)` and `var(--sidebar-text-muted)`. Check navigation labels, project names, task counts, and section headings inside the sidebar.
+
+**Approach:** Add `--sidebar-text: var(--text-primary)` and `--sidebar-text-muted: var(--text-muted)` to `:root` in `globals.css`. Then in `Sidebar.tsx`, replace `var(--text-primary)` → `var(--sidebar-text)` and `var(--text-muted)` / `var(--text-secondary)` → `var(--sidebar-text-muted)` for all elements rendered inside the `<aside>`. This is purely a naming alias at the `:root` level — the dark themes will later override these two tokens with light values.
+
+**Completion Notes:** Added `--sidebar-text` and `--sidebar-text-muted` to `:root` in `globals.css`. Updated `Sidebar.tsx` — replaced `var(--text-primary)` with `var(--sidebar-text)` and `var(--text-muted)` / `var(--text-secondary)` with `var(--sidebar-text-muted)` for all text inside the `<aside>`: user name, caret, nav labels, "My Projects" heading, chevron, project names, task counts, rename/delete buttons, "+ New Project", and "Help & resources".
+
+---
+
+#### 27.2 — Implement the theme engine in `globals.css`
+
+1. In `globals.css`, keep the existing `:root` block as the Sand (default) theme.
+
+2. Add a `[data-theme="dark"]` block, `[data-theme="ocean"]` block, and so on for all 9 themes, each redefining the full set of tokens listed above. Use the exact colour values from the Theme Definitions section.
+
+3. Apply the `data-theme` attribute to the `<html>` element (not `<body>`) so it cascades to everything including modals and toasts that may be portalled outside the body.
+
+4. Add a CSS `transition` to smooth the theme switch:
+   ```css
+   *, *::before, *::after {
+     transition: background-color 200ms ease, color 150ms ease, border-color 150ms ease;
+   }
+   ```
+   Exclude `transition` from elements where it would feel wrong (e.g. task hover states, checkbox animations) by adding `transition: none` overrides where needed.
+
+**Approach:** Add 10 `[data-theme="..."]` blocks to `globals.css` (sand through la) with the exact token values from the Theme Definitions section. Also add `[data-theme="sand"]` for explicit selection. Add the global transition rule. Interactive components use inline styles that override the CSS transition for hover/animation effects so no additional `transition: none` overrides are needed.
+
+**Completion Notes:** Added 11 `[data-theme="..."]` CSS blocks (sand, dark, ocean, forest, slate, london, warsaw, wakefield, addis, leba, la) to `globals.css` with exact token values from the spec. Each block overrides the full token set plus `--sidebar-text` / `--sidebar-text-muted`. Added `*, *::before, *::after { transition: background-color 200ms ease, color 150ms ease, border-color 150ms ease; }` for smooth switching. Inline styles on interactive components take precedence so no `transition: none` overrides needed.
+
+---
+
+#### 27.3 — Build the theme picker component
+
+1. Create `src/components/ThemePicker.tsx`. It renders a category selector followed by a row of colour swatches for the selected category.
+
+2. **Category selector:** Three small pill buttons at the top — **General**, **Nature**, **Places** — styled as a segmented control. Default active category: whichever category contains the currently active theme. Active pill uses `var(--accent)` background with white text; inactive pills use `var(--bg-hover-row)` with `var(--text-secondary)`. Font size 11px, padding `3px 10px`, border-radius 20px.
+
+3. **Swatch row:** Below the category pills, render the swatches for the selected category only. Each swatch is a `<button>` — a 22px circle using that theme's accent colour as fill. When selected, show a white tick (Lucide `Check`, size 11) centred inside.
+
+4. **Tooltip:** On hover, show the theme name using a small CSS tooltip (`:hover::after` with `content`, `position: absolute`) positioned above the swatch. Font size 11px, background `var(--bg-toast)`, colour `var(--text-toast)`, `border-radius: 4px`, `padding: 3px 7px`.
+
+5. **On click:** `document.documentElement.setAttribute('data-theme', themeId)` and save to `localStorage` under key `'todo-theme'`. Also save the active category to `localStorage` under `'todo-theme-category'` so the picker reopens on the right tab.
+
+6. **On mount:** Read `localStorage` for both keys and restore state — this prevents a flash of the wrong category on page load.
+
+**All 11 themes with swatch accent colours:**
+- *General:* Sand `#D97706` · Dark `#F5A623` · Slate `#4F46E5`
+- *Nature:* Forest `#2D6A4F` · Ocean `#3B82F6`
+- *Places:* London `#CC0000` · Warsaw `#C41E3A` · Wakefield `#C2185B` · Addis `#D4860B` · Łeba `#1B6B5A` · LA `#D2622A`
+
+**Approach:** Create `src/components/ThemePicker.tsx` as a pure client component. Organise the 11 themes into a `THEMES` constant keyed by category. Render category pill buttons and a swatch row. Use React state for active category and active theme. Apply the theme via `document.documentElement.setAttribute('data-theme', id)` and save to `localStorage`. On mount, restore from `localStorage`. Tooltip implemented as a conditionally rendered small div (hover state on the swatch button) rather than CSS pseudo-elements — easier in JSX.
+
+**Completion Notes:** Created `src/components/ThemePicker.tsx`. Defines `THEMES` grouped by category (General, Nature, Places) with 11 entries. Renders category pill buttons (segmented control) and 22px accent circle swatches. Selected swatch shows a white `Check` icon. Hover shows tooltip above the swatch and a scale(1.15) transform. On click: sets `data-theme` on `<html>` and saves to localStorage. On mount: restores theme and category from localStorage.
+
+---
+
+#### 27.4 — Add ThemePicker to the Sidebar footer
+
+1. Open `src/components/Sidebar.tsx`.
+2. At the very bottom of the sidebar, add a thin divider and then `<ThemePicker />`.
+3. The picker should feel like a natural part of the sidebar — no heading, no panel chrome. Just the category pills and swatches, sitting quietly at the bottom.
+
+**Approach:** Import `ThemePicker` into `Sidebar.tsx` and render it inside the bottom `<div>` (the footer section that already contains `CalendarButton` and the Help button), above or below the Help button, preceded by a thin divider.
+
+**Completion Notes:** Imported `ThemePicker` in `Sidebar.tsx`. Rendered it in the bottom footer `<div>` before `CalendarButton`, with a thin divider between them. The picker sits quietly at the bottom with no heading or panel chrome.
+
+---
+
+#### 27.5 — Initialise theme on page load (prevent flash)
+
+The theme must be applied before React hydrates, otherwise users will briefly see the default Sand theme before their saved theme loads.
+
+1. In `src/app/layout.tsx`, add an inline `<script>` tag inside `<head>` that runs synchronously before page render:
+   ```html
+   <script dangerouslySetInnerHTML={{ __html: `
+     (function() {
+       var t = localStorage.getItem('todo-theme');
+       if (t) document.documentElement.setAttribute('data-theme', t);
+     })();
+   ` }} />
+   ```
+   This is the standard pattern for preventing theme flash in Next.js apps.
+
+**Approach:** Add `<head>` to the `RootLayout` JSX and put the inline `<script>` inside it. Next.js App Router allows a `<head>` tag in the layout for this pattern. The script runs synchronously before React hydration, so no flash occurs.
+
+**Completion Notes:** Added `<head>` block to `RootLayout` in `layout.tsx` containing an inline `<script>` that reads `localStorage.getItem('todo-theme')` and sets `data-theme` on `<html>` synchronously before React hydrates. This prevents any flash of the default Sand theme for users who have a different theme saved.
+
+---
+
+#### 27.6 — Deploy and smoke-test all 9 themes
+
+1. Run `npm run build` locally — fix any TypeScript errors.
+2. Visually check each theme in the browser: sidebar colours, main area, task rows, modals, toasts, token highlights in the input, priority flags, habit calendar.
+3. Verify smooth transitions when switching themes.
+4. Verify the selected theme persists after a full page refresh.
+5. Commit: `git commit -m "Phase 27 — theme customisation: 11 themes across General, Nature, Places categories"`
+6. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** `npm run build` passed cleanly. All 5 files changed: `globals.css` (11 theme blocks + transition rule), `Sidebar.tsx` (sidebar-text tokens + ThemePicker), `ThemePicker.tsx` (new component), `layout.tsx` (flash-prevention script). Committed and pushed to GitHub, Vercel deploying.
+
+---
+
+### Success Criteria
+- All 9 themes apply correctly across every part of the app: sidebar, main content, modals, toasts, token highlights, priority colours, habit calendar, task detail panel
+- The theme picker shows three category tabs (General, Nature, Places) with the correct swatches under each
+- Dark-sidebar themes (Dark, Ocean, London, Addis) show light sidebar text; light-sidebar themes show dark sidebar text
+- Theme transitions are smooth (200ms) with no jarring flashes
+- Selected theme persists across page refreshes and new sessions
+- No flash of the default Sand theme on load when a different theme is saved
+- The theme picker in the sidebar footer is subtle and unobtrusive
+
+---
+
+*End of Build Plan — 27 Active Phases + 2 Future Stages*

@@ -20,6 +20,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('todo-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();` }} />
+      </head>
       <body className="flex h-screen overflow-hidden">
         <Providers>
           <ToastProvider>

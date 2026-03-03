@@ -40,6 +40,10 @@
   --date-overdue-bg:  #FDECEA;
   --date-future-bg:   #FFF3E0;
 
+  /* Sidebar text — overridden in dark-sidebar themes */
+  --sidebar-text:       var(--text-primary);
+  --sidebar-text-muted: var(--text-muted);
+
   /* Borders */
   --border:           #E8E4DF;
   --border-input:     #D1CBC3;
@@ -68,6 +72,178 @@
   --habit-amber:      #FF9800;
   --habit-red:        #EF5350;
   --habit-grey:       #E0E0E0;
+}
+
+/* ── Theme: Sand (explicit, matches :root) ─────────────────────────────── */
+[data-theme="sand"] {
+  --bg-sidebar: #FAF8F5; --bg-main: #FFFFFF; --accent: #D97706;
+  --accent-dark: #B45309; --accent-bg: #FFEED9; --bg-active: #FFEED9;
+  --bg-hover-sidebar: #F0EDE8; --bg-hover-row: #F5F5F5;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FFEED9;
+  --text-primary: #202020; --text-secondary: #666666; --text-muted: #999999;
+  --text-accent: #B45309; --text-toast: #FFFFFF;
+  --border: #E8E4DF; --border-input: #D1CBC3;
+  --divider: #F0F0F0; --icon: #555555; --icon-active: #D97706;
+  --checkbox-border: #CCCCCC;
+  --date-overdue-bg: #FDECEA; --date-future-bg: #FFF3E0;
+  --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── Theme: Dark ───────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-sidebar: #1C1C1E; --bg-main: #242424; --accent: #F5A623;
+  --accent-dark: #D4860B; --accent-bg: #3A2E1A; --bg-active: #2E2720;
+  --bg-hover-sidebar: #2A2A2C; --bg-hover-row: #2C2C2E;
+  --bg-modal: #2C2C2E; --bg-input: #333335; --bg-toast: #3A3A3C; --bg-tag: #3A2E1A;
+  --text-primary: #F2F2F7; --text-secondary: #AEAEB2; --text-muted: #636366;
+  --text-accent: #F5A623; --text-toast: #F2F2F7;
+  --border: #3A3A3C; --border-input: #48484A;
+  --divider: #2C2C2E; --icon: #AEAEB2; --icon-active: #F5A623;
+  --checkbox-border: #48484A;
+  --date-overdue-bg: #3A1F1F; --date-future-bg: #2E2A1A;
+  --sidebar-text: #F2F2F7; --sidebar-text-muted: #AEAEB2;
+  --bg-app: var(--bg-main); --bg-card: var(--bg-modal);
+  --bg-hover: var(--bg-hover-row); --accent-hover: var(--accent-dark);
+}
+
+/* ── Theme: Ocean ──────────────────────────────────────────────────────── */
+[data-theme="ocean"] {
+  --bg-sidebar: #1E2A3A; --bg-main: #FFFFFF; --accent: #3B82F6;
+  --accent-dark: #2563EB; --accent-bg: #EFF6FF; --bg-active: #DBEAFE;
+  --bg-hover-sidebar: #263447; --bg-hover-row: #F0F7FF;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #DBEAFE;
+  --text-primary: #0F172A; --text-secondary: #475569; --text-muted: #94A3B8;
+  --text-accent: #2563EB; --text-toast: #FFFFFF;
+  --border: #E2E8F0; --border-input: #CBD5E1;
+  --divider: #F1F5F9; --icon: #64748B; --icon-active: #3B82F6;
+  --checkbox-border: #CBD5E1;
+  --date-overdue-bg: #FEE2E2; --date-future-bg: #EFF6FF;
+  --sidebar-text: #E2E8F0; --sidebar-text-muted: #94A3B8;
+}
+
+/* ── Theme: Forest ─────────────────────────────────────────────────────── */
+[data-theme="forest"] {
+  --bg-sidebar: #EFF3EF; --bg-main: #FAFAF8; --accent: #2D6A4F;
+  --accent-dark: #1B4332; --accent-bg: #D8F3DC; --bg-active: #D8F3DC;
+  --bg-hover-sidebar: #E0EBE0; --bg-hover-row: #F0F5F0;
+  --bg-modal: #FAFAF8; --bg-input: #FAFAF8; --bg-toast: #1F1F1F; --bg-tag: #D8F3DC;
+  --text-primary: #1A2E1A; --text-secondary: #4A6741; --text-muted: #7A9E7A;
+  --text-accent: #1B4332; --text-toast: #FFFFFF;
+  --border: #C8DCC8; --border-input: #A8C4A8;
+  --divider: #E4EEE4; --icon: #4A6741; --icon-active: #2D6A4F;
+  --checkbox-border: #A8C4A8;
+  --date-overdue-bg: #FFE4E1; --date-future-bg: #D8F3DC;
+  --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── Theme: Slate ──────────────────────────────────────────────────────── */
+[data-theme="slate"] {
+  --bg-sidebar: #F4F5F6; --bg-main: #FFFFFF; --accent: #4F46E5;
+  --accent-dark: #3730A3; --accent-bg: #EEF2FF; --bg-active: #E0E7FF;
+  --bg-hover-sidebar: #EAEBEC; --bg-hover-row: #F8F8F9;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #EEF2FF;
+  --text-primary: #111827; --text-secondary: #4B5563; --text-muted: #9CA3AF;
+  --text-accent: #3730A3; --text-toast: #FFFFFF;
+  --border: #E5E7EB; --border-input: #D1D5DB;
+  --divider: #F3F4F6; --icon: #6B7280; --icon-active: #4F46E5;
+  --checkbox-border: #D1D5DB;
+  --date-overdue-bg: #FEE2E2; --date-future-bg: #EEF2FF;
+  --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── Theme: London ─────────────────────────────────────────────────────── */
+[data-theme="london"] {
+  --bg-sidebar: #2D2D2D; --bg-main: #FAFAFA; --accent: #CC0000;
+  --accent-dark: #A30000; --accent-bg: #FDECEA; --bg-active: #FDECEA;
+  --bg-hover-sidebar: #383838; --bg-hover-row: #F5F5F5;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDECEA;
+  --text-primary: #1A1A1A; --text-secondary: #555555; --text-muted: #888888;
+  --text-accent: #A30000; --text-toast: #FFFFFF;
+  --border: #DCDCDC; --border-input: #CCCCCC;
+  --divider: #EEEEEE; --icon: #666666; --icon-active: #CC0000;
+  --checkbox-border: #CCCCCC;
+  --date-overdue-bg: #FDECEA; --date-future-bg: #FFF3F3;
+  --sidebar-text: #E8E8E8; --sidebar-text-muted: #AAAAAA;
+}
+
+/* ── Theme: Warsaw ─────────────────────────────────────────────────────── */
+[data-theme="warsaw"] {
+  --bg-sidebar: #EEF0F3; --bg-main: #FFFFFF; --accent: #C41E3A;
+  --accent-dark: #9B1830; --accent-bg: #FDE8EC; --bg-active: #FDE8EC;
+  --bg-hover-sidebar: #E2E5EA; --bg-hover-row: #F8F9FA;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDE8EC;
+  --text-primary: #1A1A2E; --text-secondary: #4A4A6A; --text-muted: #8A8AAA;
+  --text-accent: #9B1830; --text-toast: #FFFFFF;
+  --border: #DDE1E8; --border-input: #C8CDD8;
+  --divider: #ECEEF2; --icon: #5A5A7A; --icon-active: #C41E3A;
+  --checkbox-border: #C8CDD8;
+  --date-overdue-bg: #FDECEA; --date-future-bg: #F0F2FF;
+  --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── Theme: Wakefield ──────────────────────────────────────────────────── */
+[data-theme="wakefield"] {
+  --bg-sidebar: #F2EBE0; --bg-main: #FFFDF9; --accent: #C2185B;
+  --accent-dark: #880E4F; --accent-bg: #FCE4EC; --bg-active: #FCE4EC;
+  --bg-hover-sidebar: #EAE0D4; --bg-hover-row: #FDF8F3;
+  --bg-modal: #FFFDF9; --bg-input: #FFFDF9; --bg-toast: #1F1F1F; --bg-tag: #FCE4EC;
+  --text-primary: #2C1810; --text-secondary: #6B4C3B; --text-muted: #A08070;
+  --text-accent: #880E4F; --text-toast: #FFFFFF;
+  --border: #E0D4C4; --border-input: #CEC0AD;
+  --divider: #EDE5D8; --icon: #7A5C4A; --icon-active: #C2185B;
+  --checkbox-border: #CEC0AD;
+  --date-overdue-bg: #FDECEA; --date-future-bg: #FFF0F5;
+  --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── Theme: Addis ──────────────────────────────────────────────────────── */
+[data-theme="addis"] {
+  --bg-sidebar: #1B3A2D; --bg-main: #FEFCF7; --accent: #D4860B;
+  --accent-dark: #A0620A; --accent-bg: #FDF3E3; --bg-active: #FDF3E3;
+  --bg-hover-sidebar: #24503D; --bg-hover-row: #FAF6EE;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDF3E3;
+  --text-primary: #1A0F00; --text-secondary: #5C4020; --text-muted: #9A7A50;
+  --text-accent: #A0620A; --text-toast: #FFFFFF;
+  --border: #E8DCC8; --border-input: #D4C4A4;
+  --divider: #F0E8D4; --icon: #7A6040; --icon-active: #D4860B;
+  --checkbox-border: #D4C4A4;
+  --date-overdue-bg: #FDE8E8; --date-future-bg: #FDF3E3;
+  --sidebar-text: #D4EBD8; --sidebar-text-muted: #8AB898;
+}
+
+/* ── Theme: Łeba ───────────────────────────────────────────────────────── */
+[data-theme="leba"] {
+  --bg-sidebar: #E8EEF2; --bg-main: #FFFFFF; --accent: #1B6B5A;
+  --accent-dark: #134E40; --accent-bg: #E0F2EE; --bg-active: #D0ECE6;
+  --bg-hover-sidebar: #DCE4EA; --bg-hover-row: #F2F7F9;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #E0F2EE;
+  --text-primary: #0F1F2A; --text-secondary: #3A5568; --text-muted: #7A9AAA;
+  --text-accent: #134E40; --text-toast: #FFFFFF;
+  --border: #D4DDE4; --border-input: #BACAD4;
+  --divider: #EAF0F4; --icon: #4A6A7A; --icon-active: #1B6B5A;
+  --checkbox-border: #BACAD4;
+  --date-overdue-bg: #FEE2E2; --date-future-bg: #E0F2EE;
+  --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── Theme: LA ─────────────────────────────────────────────────────────── */
+[data-theme="la"] {
+  --bg-sidebar: #FAF6F0; --bg-main: #FFFFFF; --accent: #D2622A;
+  --accent-dark: #A8471A; --accent-bg: #FDF0E8; --bg-active: #FDE8D8;
+  --bg-hover-sidebar: #F2EBE0; --bg-hover-row: #FDF9F5;
+  --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDF0E8;
+  --text-primary: #1E120A; --text-secondary: #6B4832; --text-muted: #A88060;
+  --text-accent: #A8471A; --text-toast: #FFFFFF;
+  --border: #EAD8C4; --border-input: #D8C0A4;
+  --divider: #F2E8DC; --icon: #8A6040; --icon-active: #D2622A;
+  --checkbox-border: #D8C0A4;
+  --date-overdue-bg: #FDECEA; --date-future-bg: #FDF0E8;
+  --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── Smooth theme transitions ──────────────────────────────────────────── */
+*, *::before, *::after {
+  transition: background-color 200ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 * {

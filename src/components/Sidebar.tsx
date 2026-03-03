@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { Project } from '@/types/project';
 import ProjectModal from './ProjectModal';
 import CalendarButton from './CalendarButton';
+import ThemePicker from './ThemePicker';
 
 type SidebarProject = Project & { taskCount: number };
 
@@ -186,7 +187,7 @@ export default function Sidebar() {
           borderRadius: 8,
           fontSize: 15,
           fontWeight: active ? 600 : 400,
-          color: 'var(--text-primary)',
+          color: 'var(--sidebar-text)',
           background: active ? 'var(--bg-active)' : 'transparent',
           border: 'none',
           cursor: 'pointer',
@@ -244,8 +245,8 @@ export default function Sidebar() {
           >
             YA
           </div>
-          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Yosef</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 2 }}>▾</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--sidebar-text)' }}>Yosef</span>
+          <span style={{ fontSize: 11, color: 'var(--sidebar-text-muted)', marginLeft: 2 }}>▾</span>
         </div>
 
         {/* Add task button */}
@@ -336,13 +337,13 @@ export default function Sidebar() {
               style={{
                 fontSize: 12,
                 fontWeight: 600,
-                color: 'var(--text-secondary)',
+                color: 'var(--sidebar-text-muted)',
                 flex: 1,
               }}
             >
               My Projects
             </span>
-            <span style={{ color: 'var(--text-muted)', display: 'flex' }}>
+            <span style={{ color: 'var(--sidebar-text-muted)', display: 'flex' }}>
               {projectsCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
             </span>
           </div>
@@ -365,7 +366,7 @@ export default function Sidebar() {
                         borderRadius: 8,
                         fontSize: 15,
                         fontWeight: active ? 600 : 400,
-                        color: 'var(--text-primary)',
+                        color: 'var(--sidebar-text)',
                         background: active ? 'var(--bg-active)' : 'transparent',
                         border: 'none',
                         cursor: 'pointer',
@@ -397,7 +398,7 @@ export default function Sidebar() {
                         {p.name}
                       </span>
                       {p.taskCount > 0 && (
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{p.taskCount}</span>
+                        <span style={{ fontSize: 13, color: 'var(--sidebar-text-muted)' }}>{p.taskCount}</span>
                       )}
                     </button>
 
@@ -410,7 +411,7 @@ export default function Sidebar() {
                         onClick={(e) => { e.stopPropagation(); setProjectError(null); setRenaming(p); }}
                         style={{
                           fontSize: 12,
-                          color: 'var(--text-muted)',
+                          color: 'var(--sidebar-text-muted)',
                           background: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
@@ -427,7 +428,7 @@ export default function Sidebar() {
                         onClick={(e) => { e.stopPropagation(); deleteProject(p); }}
                         style={{
                           fontSize: 14,
-                          color: 'var(--text-muted)',
+                          color: 'var(--sidebar-text-muted)',
                           background: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
@@ -457,7 +458,7 @@ export default function Sidebar() {
                   padding: '0 12px',
                   borderRadius: 8,
                   fontSize: 14,
-                  color: 'var(--text-muted)',
+                  color: 'var(--sidebar-text-muted)',
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
@@ -473,7 +474,7 @@ export default function Sidebar() {
           )}
         </div>
 
-        {/* Bottom — Google Calendar + Help */}
+        {/* Bottom — Theme picker + Google Calendar + Help */}
         <div
           style={{
             padding: '12px 8px',
@@ -483,6 +484,8 @@ export default function Sidebar() {
             gap: 2,
           }}
         >
+          <ThemePicker />
+          <div style={{ height: 1, background: 'var(--divider)', margin: '6px 4px' }} />
           <CalendarButton />
           <button
             style={{
@@ -493,7 +496,7 @@ export default function Sidebar() {
               padding: '6px 12px',
               borderRadius: 8,
               fontSize: 13,
-              color: 'var(--text-muted)',
+              color: 'var(--sidebar-text-muted)',
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
