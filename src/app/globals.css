@@ -5,7 +5,7 @@
 
   /* Backgrounds */
   --bg-sidebar:       #FAF8F5;
-  --bg-main:          #FFFFFF;
+  --bg-main:          #FFFBF5;
   --bg-active:        #FFEED9;
   --bg-hover-sidebar: #F0EDE8;
   --bg-hover-row:     #F5F5F5;
@@ -89,7 +89,7 @@
 
 /* ── Theme: Sand (explicit, matches :root) ─────────────────────────────── */
 [data-theme="sand"] {
-  --bg-sidebar: #FAF8F5; --bg-main: #FFFFFF; --accent: #D97706;
+  --bg-sidebar: #FAF8F5; --bg-main: #FFFBF5; --accent: #D97706;
   --accent-dark: #B45309; --accent-bg: #FFEED9; --bg-active: #FFEED9;
   --bg-hover-sidebar: #F0EDE8; --bg-hover-row: #F5F5F5;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FFEED9;
@@ -121,9 +121,9 @@
 
 /* ── Theme: Ocean ──────────────────────────────────────────────────────── */
 [data-theme="ocean"] {
-  --bg-sidebar: #1E2A3A; --bg-main: #FFFFFF; --accent: #3B82F6;
+  --bg-sidebar: #1E2A3A; --bg-main: #F4F8FC; --accent: #3B82F6;
   --accent-dark: #2563EB; --accent-bg: #EFF6FF; --bg-active: #1E3A5F;
-  --bg-hover-sidebar: #263447; --bg-hover-row: #F0F7FF;
+  --bg-hover-sidebar: #263447; --bg-hover-row: #E0EDFA;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #DBEAFE;
   --text-primary: #0F172A; --text-secondary: #475569; --text-muted: #94A3B8;
   --text-accent: #2563EB; --text-toast: #FFFFFF;
@@ -137,9 +137,9 @@
 
 /* ── Theme: Forest ─────────────────────────────────────────────────────── */
 [data-theme="forest"] {
-  --bg-sidebar: #EFF3EF; --bg-main: #FAFAF8; --accent: #2D6A4F;
+  --bg-sidebar: #EFF3EF; --bg-main: #F4F8F4; --accent: #2D6A4F;
   --accent-dark: #1B4332; --accent-bg: #D8F3DC; --bg-active: #D8F3DC;
-  --bg-hover-sidebar: #E0EBE0; --bg-hover-row: #F0F5F0;
+  --bg-hover-sidebar: #E0EBE0; --bg-hover-row: #E5EFEA;
   --bg-modal: #FAFAF8; --bg-input: #FAFAF8; --bg-toast: #1F1F1F; --bg-tag: #D8F3DC;
   --text-primary: #1A2E1A; --text-secondary: #4A6741; --text-muted: #7A9E7A;
   --text-accent: #1B4332; --text-toast: #FFFFFF;
@@ -152,9 +152,9 @@
 
 /* ── Theme: Slate ──────────────────────────────────────────────────────── */
 [data-theme="slate"] {
-  --bg-sidebar: #F4F5F6; --bg-main: #FFFFFF; --accent: #4F46E5;
+  --bg-sidebar: #F4F5F6; --bg-main: #F4F5FB; --accent: #4F46E5;
   --accent-dark: #3730A3; --accent-bg: #EEF2FF; --bg-active: #E0E7FF;
-  --bg-hover-sidebar: #EAEBEC; --bg-hover-row: #F8F8F9;
+  --bg-hover-sidebar: #EAEBEC; --bg-hover-row: #E8E9F2;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #EEF2FF;
   --text-primary: #111827; --text-secondary: #4B5563; --text-muted: #9CA3AF;
   --text-accent: #3730A3; --text-toast: #FFFFFF;
@@ -167,7 +167,7 @@
 
 /* ── Theme: London ─────────────────────────────────────────────────────── */
 [data-theme="london"] {
-  --bg-sidebar: #2D2D2D; --bg-main: #FAFAFA; --accent: #CC0000;
+  --bg-sidebar: #2D2D2D; --bg-main: #FFF5F5; --accent: #CC0000;
   --accent-dark: #A30000; --accent-bg: #FDECEA; --bg-active: #4A1010;
   --bg-hover-sidebar: #383838; --bg-hover-row: #F5F5F5;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDECEA;
@@ -183,7 +183,7 @@
 
 /* ── Theme: Warsaw ─────────────────────────────────────────────────────── */
 [data-theme="warsaw"] {
-  --bg-sidebar: #EEF0F3; --bg-main: #FFFFFF; --accent: #C41E3A;
+  --bg-sidebar: #EEF0F3; --bg-main: #FFF4F6; --accent: #C41E3A;
   --accent-dark: #9B1830; --accent-bg: #FDE8EC; --bg-active: #FDE8EC;
   --bg-hover-sidebar: #E2E5EA; --bg-hover-row: #F8F9FA;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDE8EC;
@@ -198,9 +198,9 @@
 
 /* ── Theme: Wakefield ──────────────────────────────────────────────────── */
 [data-theme="wakefield"] {
-  --bg-sidebar: #F2EBE0; --bg-main: #FFFDF9; --accent: #C2185B;
+  --bg-sidebar: #F2EBE0; --bg-main: #FFF8F2; --accent: #C2185B;
   --accent-dark: #880E4F; --accent-bg: #FCE4EC; --bg-active: #FCE4EC;
-  --bg-hover-sidebar: #EAE0D4; --bg-hover-row: #FDF8F3;
+  --bg-hover-sidebar: #EAE0D4; --bg-hover-row: #F2EBE0;
   --bg-modal: #FFFDF9; --bg-input: #FFFDF9; --bg-toast: #1F1F1F; --bg-tag: #FCE4EC;
   --text-primary: #2C1810; --text-secondary: #6B4C3B; --text-muted: #A08070;
   --text-accent: #880E4F; --text-toast: #FFFFFF;
@@ -213,7 +213,7 @@
 
 /* ── Theme: Addis ──────────────────────────────────────────────────────── */
 [data-theme="addis"] {
-  --bg-sidebar: #1B3A2D; --bg-main: #FEFCF7; --accent: #D4860B;
+  --bg-sidebar: #1B3A2D; --bg-main: #F5FAF6; --accent: #D4860B;
   --accent-dark: #A0620A; --accent-bg: #FDF3E3; --bg-active: #243D2D;
   --bg-hover-sidebar: #24503D; --bg-hover-row: #FAF6EE;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDF3E3;
@@ -229,9 +229,9 @@
 
 /* ── Theme: Łeba ───────────────────────────────────────────────────────── */
 [data-theme="leba"] {
-  --bg-sidebar: #E8EEF2; --bg-main: #FFFFFF; --accent: #1B6B5A;
+  --bg-sidebar: #E8EEF2; --bg-main: #F2F9F8; --accent: #1B6B5A;
   --accent-dark: #134E40; --accent-bg: #E0F2EE; --bg-active: #D0ECE6;
-  --bg-hover-sidebar: #DCE4EA; --bg-hover-row: #F2F7F9;
+  --bg-hover-sidebar: #DCE4EA; --bg-hover-row: #DFF0EE;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #E0F2EE;
   --text-primary: #0F1F2A; --text-secondary: #3A5568; --text-muted: #7A9AAA;
   --text-accent: #134E40; --text-toast: #FFFFFF;
@@ -244,9 +244,9 @@
 
 /* ── Theme: LA ─────────────────────────────────────────────────────────── */
 [data-theme="la"] {
-  --bg-sidebar: #FAF6F0; --bg-main: #FFFFFF; --accent: #D2622A;
+  --bg-sidebar: #FAF6F0; --bg-main: #FFF8F3; --accent: #D2622A;
   --accent-dark: #A8471A; --accent-bg: #FDF0E8; --bg-active: #FDE8D8;
-  --bg-hover-sidebar: #F2EBE0; --bg-hover-row: #FDF9F5;
+  --bg-hover-sidebar: #F2EBE0; --bg-hover-row: #F0E5D5;
   --bg-modal: #FFFFFF; --bg-input: #FFFFFF; --bg-toast: #1F1F1F; --bg-tag: #FDF0E8;
   --text-primary: #1E120A; --text-secondary: #6B4832; --text-muted: #A88060;
   --text-accent: #A8471A; --text-toast: #FFFFFF;
@@ -255,6 +255,27 @@
   --checkbox-border: #D8C0A4;
   --date-overdue-bg: #FDECEA; --date-future-bg: #FDF0E8;
   --sidebar-text: var(--text-primary); --sidebar-text-muted: var(--text-muted);
+}
+
+/* ── View header accent band ───────────────────────────────────────────── */
+/* Negative margins bleed out past MainContent's padding to create a full-width band */
+.view-header-band {
+  background: var(--accent-bg);
+  border-bottom: 1px solid var(--border);
+  margin-top: -32px;
+  margin-left: -48px;
+  margin-right: -48px;
+  margin-bottom: 24px;
+  padding: 28px 48px 16px;
+}
+@media (max-width: 767px) {
+  .view-header-band {
+    margin-top: -20px;
+    margin-left: -16px;
+    margin-right: -16px;
+    margin-bottom: 20px;
+    padding: 20px 16px 14px;
+  }
 }
 
 /* ── Smooth theme transitions ──────────────────────────────────────────── */

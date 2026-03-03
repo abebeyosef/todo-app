@@ -510,9 +510,9 @@ export default function HabitsPage() {
   };
 
   return (
-    <div style={{ maxWidth: 600 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+    <>
+      {/* Header band */}
+      <div className="view-header-band" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--accent)' }}>Habits</h1>
           {!loading && total > 0 && (
@@ -565,6 +565,7 @@ export default function HabitsPage() {
         </div>
       </div>
 
+      <div style={{ maxWidth: 600 }}>
       {/* Tabs */}
       {!showSettings && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -860,6 +861,7 @@ export default function HabitsPage() {
           )}
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }

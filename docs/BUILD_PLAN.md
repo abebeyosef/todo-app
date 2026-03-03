@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 36)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 37)
 
 ---
 
@@ -73,6 +73,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 34 | Mobile Navigation Redesign — Browse Tab & Project Navigation | [x] Done |
 | 35 | Theme Impact — Full-App Colour Application + Browse Add Project Fix | [x] Done |
 | 36 | Fix: Browse Add-Project Button + Theme Colours in Main Content Area | [x] Done |
+| 37 | Light Theme Visual Impact — Tinted Backgrounds + Accent Header Band | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -4286,4 +4287,100 @@ Follow these steps precisely:
 
 ---
 
-*End of Build Plan — 36 Active Phases + 2 Future Stages*
+---
+
+## Phase 37 — Light Theme Visual Impact — Tinted Backgrounds + Accent Header Band
+
+**Status:** [x] Done
+
+**Context:** The Dark theme makes a strong full-app impression because its `--bg-main` (`#242424`) is unmistakably different from any sidebar colour. Light themes don't have this — most have `--bg-main` values that are either pure white (`#FFFFFF`) or barely-off-white (`#FAFAF8`, `#FFFDF9`), which are visually indistinguishable to the eye. The fix has two parts: (1) update `--bg-main` values to be noticeably tinted for each light theme, and (2) add a coloured accent header band at the top of every main view so the theme colour is immediately visible in the content area.
+
+---
+
+### Steps for Claude Code
+
+#### 37.1 — Update `--bg-main` to noticeably tinted values for light themes
+
+*Approach: Update globals.css — both `:root` (default/no-theme) and each named `[data-theme]` block — applying the exact new `--bg-main` values from the table. Also update `--bg-hover-row` for themes where the new main and existing hover are too similar (Slate, Forest, Ocean, Wakefield, Łeba, LA) so hover remains visibly darker than rest state.*
+
+In `src/app/globals.css`, update the `--bg-main` value for each light theme to a colour that is visibly tinted — not just barely off-white. The goal is that switching themes makes the main area feel noticeably different, similar to how switching a phone to night mode instantly changes the feel of every screen.
+
+Use these values (each chosen to harmonise with the theme's sidebar and accent colours):
+
+| Theme | Current `--bg-main` | New `--bg-main` | Character |
+|-------|-------------------|-----------------|-----------|
+| Sand | `#FFFFFF` | `#FFFBF5` | Warm cream — matches the sandy sidebar |
+| Slate | `#FFFFFF` | `#F4F5FB` | Cool blue-grey tint — matches the indigo accent |
+| Forest | `#FAFAF8` | `#F4F8F4` | Soft green-white — feels like filtered light through trees |
+| Ocean | `#FFFFFF` | `#F4F8FC` | Light sky blue tint — complements the navy sidebar |
+| London | `#FAFAFA` | `#FFF5F5` | Very faint warm red — matches the crimson accent |
+| Warsaw | `#FFFFFF` | `#FFF4F6` | Soft rose tint — matches the deep red accent |
+| Wakefield | `#FFFDF9` | `#FFF8F2` | Warm peach tint — rhubarb-inspired |
+| Addis | `#FEFCF7` | `#F5FAF6` | Pale sage green — matches the eucalyptus sidebar |
+| Łeba | `#FFFFFF` | `#F2F9F8` | Subtle teal tint — matches the lighthouse-green accent |
+| LA | `#FFFFFF` | `#FFF8F3` | Warm terracotta tint — matches the LA sunset accent |
+| Dark | `#242424` | unchanged | Already perfect |
+
+**Important:** After making these changes, also update `--bg-hover-row` for any theme where the new `--bg-main` is now similar to the old hover colour — the hover state must still be visibly darker than the resting background. Increase hover contrast by roughly 6–8% lightness difference.
+
+**Completion Notes:** Updated `--bg-main` in both `:root` (default/no-theme) and all named `[data-theme]` blocks: Sand `#FFFBF5`, Slate `#F4F5FB`, Forest `#F4F8F4`, Ocean `#F4F8FC`, London `#FFF5F5`, Warsaw `#FFF4F6`, Wakefield `#FFF8F2`, Addis `#F5FAF6`, Łeba `#F2F9F8`, LA `#FFF8F3`, Dark unchanged. Updated `--bg-hover-row` for 6 themes where the new main and old hover were too similar: Slate→`#E8E9F2`, Forest→`#E5EFEA`, Ocean→`#E0EDFA`, Wakefield→`#F2EBE0`, Łeba→`#DFF0EE`, LA→`#F0E5D5`. File changed: `src/app/globals.css`.
+
+---
+
+#### 37.2 — Add a coloured accent header band to every main view
+
+*Approach: Add a `.view-header-band` CSS class to globals.css that uses negative margins (`margin: -32px -48px 24px` on desktop, `-20px -16px 20px` on mobile) to counteract MainContent's padding and create a full-bleed band, then sets `background: var(--accent-bg)` and `border-bottom: 1px solid var(--border)`. Apply this class to each view's header div in `page.tsx` (Today, Upcoming, Backlog, Inbox, By-Project) and `habits/page.tsx`.*
+
+The header area at the top of each view (the strip containing the view title like "Today", "All Tasks", "Upcoming", etc.) should have a subtle background tint using `var(--accent-bg)`. This creates a visible coloured band that immediately signals the current theme when you switch views, without being heavy-handed.
+
+1. In `src/app/page.tsx`, find the view header element for each view (Today, Upcoming, All Tasks, Backlog, By-Project). Add `background: var(--accent-bg)` and a bottom border of `1px solid var(--border)` to the header container. This is the strip from the top of the main area down to just below the view title — it should not extend over the task list rows.
+
+2. The view title itself (`h1` or equivalent — e.g. "Today", "All Tasks") should use `color: var(--accent)`. This was specified in Phase 35/36 but confirm it is actually applied.
+
+3. The date sub-heading (e.g. "3 Mar · Today · Tuesday") should use `color: var(--text-accent)`.
+
+4. The same treatment should apply in `src/app/habits/page.tsx` for the "Habits" page header.
+
+5. **Do not** apply `--accent-bg` to the task rows themselves — only to the header band. Task rows keep `--bg-main` as their resting background and `--bg-hover-row` on hover.
+
+**Visual result:** When you switch to Łeba (teal), the header band is a soft teal wash, the title "Today" is teal, and the main content area is a light `#F2F9F8` tint — immediately recognisable as Łeba, not just a white page with a blue-grey sidebar.
+
+**Completion Notes:** Added `.view-header-band` CSS class to `globals.css` using negative margins (`margin-top: -32px; margin-left: -48px; margin-right: -48px`) to bleed past MainContent's padding, creating a full-width accent-bg tinted band with a bottom border. Mobile override at `≤767px` uses `-20px`/`-16px`. Applied `className="view-header-band"` to all 6 view headers in `page.tsx` (Today, Upcoming, By-Project, Backlog, Inbox) and to the Habits header in `habits/page.tsx`. For Habits, restructured the outer div to `<>` fragment so the header band sits outside the `maxWidth: 600` content constraint. Applied the same class to the All Tasks header in `inbox/page.tsx`. Files changed: `globals.css`, `page.tsx`, `habits/page.tsx`, `inbox/page.tsx`.
+
+---
+
+#### 37.3 — Verification
+
+Before marking this phase done, Claude Code must confirm the following visually by reading the CSS and tracing token resolution:
+
+1. **Łeba theme:** `--bg-main` resolves to `#F2F9F8` (not `#FFFFFF`). Header band is `--accent-bg` (`#E0F2EE`). Title colour is `--accent` (`#1B6B5A`).
+2. **Forest theme:** `--bg-main` resolves to `#F4F8F4`. Header band is `--accent-bg` (`#D8F3DC`). Title is `--accent` (`#2D6A4F`).
+3. **Dark theme:** `--bg-main` is still `#242424`. No regression.
+4. **Sand theme (default):** `--bg-main` is `#FFFBF5`. No regression on the default experience.
+
+If any theme does not match the expected values, fix it before proceeding.
+
+**Completion Notes:** Token trace confirmed: Łeba `--bg-main: #F2F9F8` ✓, `--accent-bg: #E0F2EE` ✓, `--accent: #1B6B5A` ✓. Forest `--bg-main: #F4F8F4` ✓, `--accent-bg: #D8F3DC` ✓, `--accent: #2D6A4F` ✓. Dark `--bg-main: #242424` ✓ (unchanged). Sand `--bg-main: #FFFBF5` ✓. All four verification criteria met.
+
+---
+
+#### 37.4 — Deploy
+
+1. Run `npm run build` — fix any TypeScript errors.
+2. Commit: `git commit -m "Phase 37 — light theme tinted backgrounds and accent header band"`
+3. Push to GitHub, confirm Vercel deploys.
+
+**Completion Notes:** Build passed (0 TypeScript errors). Committed and pushed to GitHub; Vercel auto-deploys.
+
+---
+
+### Success Criteria
+- Switching between any two light themes produces a visible difference in the main content area background colour — not just the sidebar.
+- Every view shows an accent-coloured header band at the top using `--accent-bg`, with the view title in `--accent`.
+- The Dark theme is completely unchanged.
+- The Sand (default) theme still feels warm and clean — not garish.
+- Task rows retain a clear hover state that contrasts with the new tinted background.
+
+---
+
+*End of Build Plan — 37 Active Phases + 2 Future Stages*

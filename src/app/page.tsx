@@ -444,7 +444,7 @@ export default function TasksPage() {
     return (
       <>
         {/* Page header */}
-        <div style={{ marginBottom: 24 }}>
+        <div className="view-header-band">
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Today
           </h1>
@@ -574,7 +574,7 @@ export default function TasksPage() {
     return (
       <>
         {/* Header row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div className="view-header-band" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Upcoming
           </h1>
@@ -854,7 +854,7 @@ export default function TasksPage() {
     const pageTitle = selectedProject ? selectedProject.name : 'By Project';
     return (
       <>
-        <div style={{ marginBottom: 24 }}>
+        <div className="view-header-band">
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             {pageTitle}
           </h1>
@@ -941,7 +941,7 @@ export default function TasksPage() {
     const backlogCompleted = completedTasks.filter((t) => t.isBacklog);
     return (
       <>
-        <div style={{ marginBottom: 24 }}>
+        <div className="view-header-band">
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Backlog
           </h1>
@@ -973,7 +973,7 @@ export default function TasksPage() {
     const inbox = activeTasks.filter((t) => !t.projectId || t.projectId === inboxProject?.id);
     return (
       <>
-        <div style={{ marginBottom: 24 }}>
+        <div className="view-header-band">
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
             Inbox
           </h1>
