@@ -1,5 +1,5 @@
 # Personal Task & Habit Manager — Build Plan
-**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 3 March 2026 (Phase 38)
+**Project:** ToDo App | **Owner:** Yosef | **Last updated:** 4 March 2026 (Phase 39)
 
 ---
 
@@ -75,7 +75,7 @@ These are moments where Claude Code cannot proceed without real information from
 | 36 | Fix: Browse Add-Project Button + Theme Colours in Main Content Area | [x] Done |
 | 37 | Light Theme Visual Impact — Tinted Backgrounds + Accent Header Band | [x] Done |
 | 38 | Fix Theme Visibility — Overflow Clipping + Stronger Colour Signal | [x] Done |
-| 39 | Fix Scrolling — Sidebar and Main Content Area | [ ] Pending |
+| 39 | Fix Scrolling — Sidebar and Main Content Area | [x] Done |
 
 ### 🔮 Future Stages (Not Yet Actioned)
 These ideas have been explored and scoped but are not part of the active build. Move them into the main table when ready to action.
@@ -4479,7 +4479,12 @@ Also update `--bg-hover-row` for each theme to be ~8% darker than the new `--bg-
 
 ## Phase 39 — Fix Scrolling — Sidebar and Main Content Area
 
-**Status:** [ ] Pending
+**Status:** [x] Done
+
+**Completion Notes:**
+- **39.1:** Removed `overflow: 'hidden'` from `<aside>` in `Sidebar.tsx` and replaced with `overflowX: 'hidden'`. Added `minHeight: 0` so the sidebar can shrink below its content height in flex layout. Sidebar now scrolls vertically when projects overflow the viewport.
+- **39.2:** Added `minHeight: 0` to the `<main>` inline style in `MainContent.tsx`. Confirmed `globals.css` already had `.main-content { padding: 20px 16px 80px !important }` for mobile bottom nav clearance.
+- **39.3:** Build passed clean. Committed and pushed to GitHub.
 
 **Diagnosis:** Two distinct scroll bugs identified by reading the source code directly.
 
@@ -4495,7 +4500,7 @@ On a landscape phone (~375px tall) or small browser window, flex children that d
 
 #### 39.1 — Fix sidebar scroll: remove conflicting `overflow: hidden`
 
-*Approach: (Claude Code fills this in before coding)*
+*Approach: In `src/components/Sidebar.tsx` the `<aside>` has both `overflowY: 'auto'` (line 260) and `overflow: 'hidden'` (line 261) as inline styles. The shorthand `overflow: 'hidden'` overrides the Y-axis value, making the sidebar permanently non-scrollable. Fix: replace `overflow: 'hidden'` with `overflowX: 'hidden'` so horizontal clipping is preserved but vertical scrolling is restored. Also add `minHeight: 0` so the flex child can shrink below its content height on short viewports.*
 
 Open `src/components/Sidebar.tsx`. Find the `<aside>` inline style object. It currently contains both `overflowY: 'auto'` and `overflow: 'hidden'`. Remove `overflow: 'hidden'` entirely and replace with `overflowX: 'hidden'` so the sidebar clips horizontally but scrolls vertically:
 
@@ -4511,13 +4516,13 @@ overflowX: 'hidden',
 
 Also add `minHeight: 0` to the `<aside>` inline style so it can shrink below its content height inside the flex layout.
 
-**Completion Notes:** *(Claude Code fills this in after completing 39.1)*
+**Completion Notes:** Removed `overflow: 'hidden'` from the `<aside>` inline style in `Sidebar.tsx` (line 261) and replaced with `overflowX: 'hidden'`. Added `minHeight: 0` to allow the sidebar to shrink below its content height in short viewports. Sidebar now scrolls vertically when content overflows.
 
 ---
 
 #### 39.2 — Ensure main content scrolls on short viewports
 
-*Approach: (Claude Code fills this in before coding)*
+*Approach: In `src/components/MainContent.tsx`, the `<main>` has `flex-1 overflow-y-auto` but no `minHeight: 0`. Without it, the flex child won't shrink below its content height, so short viewports can't scroll. Adding `minHeight: 0` to the inline style fixes this. Will also verify `globals.css` `.main-content` mobile padding includes `padding-bottom: 80px` so content isn't hidden behind the bottom nav.*
 
 In `src/components/MainContent.tsx`, confirm `overflow-y-auto` is applied and add `minHeight: 0` to the inline style. Without `minHeight: 0`, a flex child's minimum height defaults to `auto` (the size of its content), preventing it from shrinking and breaking scroll on short viewports:
 
@@ -4531,7 +4536,7 @@ In `src/components/MainContent.tsx`, confirm `overflow-y-auto` is applied and ad
 
 Also verify that `.main-content` in `globals.css` still has `padding-bottom: 80px` on mobile so the last task row isn't hidden behind the bottom nav bar.
 
-**Completion Notes:** *(Claude Code fills this in after completing 39.2)*
+**Completion Notes:** Added `minHeight: 0` to the inline style of `<main>` in `MainContent.tsx`. Verified `globals.css` already has `.main-content { padding: 20px 16px 80px !important; }` on mobile — bottom nav clearance is intact. Main content now shrinks and scrolls correctly on short viewports.
 
 ---
 
@@ -4544,7 +4549,7 @@ Also verify that `.main-content` in `globals.css` still has `padding-bottom: 80p
 5. Commit: `git commit -m "Phase 39 — fix sidebar and main content scrolling on short viewports"`
 6. Push to GitHub, confirm Vercel deploys.
 
-**Completion Notes:** *(Claude Code fills this in after completing 39.3)*
+**Completion Notes:** Build passed clean. Committed "Phase 39 — fix sidebar and main content scrolling on short viewports" and pushed to GitHub.
 
 ---
 
