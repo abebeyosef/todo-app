@@ -1,6 +1,8 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 
+const ALLOWED_EMAIL = 'yyosefaabebe@gmail.com';
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
@@ -16,7 +18,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  pages: {
+    signIn: '/login',
+  },
   callbacks: {
+    async signIn({ user }) {
+      // Only allow the owner's Google account — anyone else is rejected.
+      return user.email === ALLOWED_EMAIL;
+    },
     async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token;
