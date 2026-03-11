@@ -17,7 +17,8 @@ import { createClient } from '@supabase/supabase-js';
  */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  process.env.SUPA_SERVICE_KEY ||          // name used in Vercel env vars
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||  // fallback for standard naming
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!; // last resort — no RLS bypass
 
 export const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
